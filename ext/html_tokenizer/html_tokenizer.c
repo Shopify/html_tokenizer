@@ -95,8 +95,6 @@ static inline void pop_context(struct tokenizer_t *tk)
   tk->context[tk->current_context--] = TOKENIZER_NONE;
 }
 
-static int scan_once(struct tokenizer_t *tk, struct scan_t *scan);
-
 static inline void yield(struct scan_t *scan, VALUE sym, uint32_t length)
 {
   scan->last_token = sym;
@@ -125,7 +123,7 @@ static int scan_document(struct tokenizer_t *tk, struct scan_t *scan)
   }
   else {
     push_context(tk, TOKENIZER_HTML);
-    return scan_once(tk, scan);
+    return 1;
   }
 }
 

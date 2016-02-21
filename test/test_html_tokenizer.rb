@@ -36,13 +36,11 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_html_comment
-    skip
     result = tokenize("<!-- COMMENT -->")
     assert_equal [[:comment_start, "<!--"], [:text, " COMMENT "], [:comment_end, "-->"]], result
   end
 
   def test_tokenize_comment_with_newlines
-    skip
     result = tokenize <<-EOF
       <!-- debug: <%== @unsafe %> -->
     EOF
@@ -55,7 +53,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_cdata_section
-    skip
     result = tokenize("<![CDATA[  bla bla <!&@#> foo ]]>")
     assert_equal [[:cdata_start, "<![CDATA["], [:text, "  bla bla <!&@#> foo "], [:cdata_end, "]]>"]], result
   end
@@ -159,17 +156,15 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_script_tag
-    skip
     result = tokenize('<script>foo <b> bar</script>')
     assert_equal [
       [:tag_start, "<script"], [:tag_end, ">"],
-      [:text, "foo "], [:text, "<"], [:text, "b> bar"],
+      [:text, "foo "], [:text, "<b"], [:text, "> bar"],
       [:tag_start, "</script"], [:tag_end, ">"],
     ], result
   end
 
   def test_tokenize_textarea_tag
-    skip
     result = tokenize('<textarea>hello</textarea>')
     assert_equal [
       [:tag_start, "<textarea"], [:tag_end, ">"],
@@ -179,13 +174,12 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_script_containing_html
-    skip
     result = tokenize('<script type="text/html">foo <b> bar</script>')
     assert_equal [
       [:tag_start, "<script"], [:whitespace, " "],
       [:attribute_name, "type"], [:equal, "="], [:attribute_value_start, "\""], [:text, "text/html"], [:attribute_value_end, "\""],
       [:tag_end, ">"],
-      [:text, "foo "], [:text, "<"], [:text, "b> bar"],
+      [:text, "foo "], [:text, "<b"], [:text, "> bar"],
       [:tag_start, "</script"], [:tag_end, ">"],
     ], result
   end

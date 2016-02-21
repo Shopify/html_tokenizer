@@ -8,7 +8,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_doctype
-    skip
     assert_equal [
       [:tag_start, "<!DOCTYPE"], [:whitespace, " "],
       [:attribute_name, "html"], [:tag_end, ">"]
@@ -16,7 +15,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_multiple_elements
-    skip
     assert_equal [
       [:tag_start, "<div"], [:tag_end, ">"],
       [:text, " bla "],
@@ -25,7 +23,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_complex_doctype
-    skip
     text = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
     assert_equal [
       [:tag_start, "<!DOCTYPE"], [:whitespace, " "],
@@ -64,25 +61,21 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_basic_tag
-    skip
     result = tokenize("<div>")
     assert_equal [[:tag_start, "<div"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_namespaced_tag
-    skip
     result = tokenize("<ns:foo>")
     assert_equal [[:tag_start, "<ns:foo"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_end_tag
-    skip
     result = tokenize("</div>")
     assert_equal [[:tag_start, "</div"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_tag_attribute_with_double_quote
-    skip
     result = tokenize('<div foo="bar">')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -92,7 +85,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_tag_attribute_without_space
-    skip
     result = tokenize('<div foo="bar"baz>')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -103,7 +95,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_multipart_unquoted_attribute
-    skip
     result = tokenize('<div foo=', 'bar', 'baz>')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -113,7 +104,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_quoted_attribute_separately
-    skip
     result = tokenize('<div foo=', "'bar'", '>')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -123,7 +113,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_quoted_attribute_in_multiple_parts
-    skip
     result = tokenize('<div foo=', "'bar", "baz'", '>')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -133,7 +122,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_tag_attribute_with_single_quote
-    skip
     result = tokenize("<div foo='bar'>")
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -143,7 +131,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_tag_attribute_with_no_quotes
-    skip
     result = tokenize("<div foo=bla bar=blo>")
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -154,7 +141,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_double_equals
-    skip
     result = tokenize("<div foo=blabar=blo>")
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -164,12 +150,11 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_closing_tag
-    skip
     result = tokenize('<div foo="bar" />')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
       [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "bar"], [:attribute_value_end, "\""], [:whitespace, " "],
-      [:tag_end, "/>"]
+      [:slash, "/"], [:tag_end, ">"]
     ], result
   end
 
@@ -206,7 +191,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_end_of_tag_on_newline
-    skip
     data = ["\
           <div define=\"{credential_96_credential1: new Shopify.ProviderCredentials()}\"
                   ", "", ">"]
@@ -219,7 +203,6 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_multi_part_attribute_name
-    skip
     result = tokenize('<div data-', 'shipping', '-type>')
     assert_equal [
       [:tag_start, "<div"], [:whitespace, " "],
@@ -229,11 +212,10 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
   end
 
   def test_tokenize_attribute_name_with_space_before_equal
-    skip
     result = tokenize('<a href ="http://www.cra-arc.gc.ca/tx/bsnss/tpcs/gst-tps/menu-eng.html">GST/HST</a>')
     assert_equal [
       [:tag_start, "<a"], [:whitespace, " "],
-      [:attribute_name, "href"], [:equal, " ="],
+      [:attribute_name, "href"], [:whitespace, " "], [:equal, "="],
       [:attribute_value_start, "\""], [:text, "http://www.cra-arc.gc.ca/tx/bsnss/tpcs/gst-tps/menu-eng.html"], [:attribute_value_end, "\""],
       [:tag_end, ">"], [:text, "GST/HST"], [:tag_start, "</a"], [:tag_end, ">"]
     ], result
@@ -245,7 +227,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     tokens = []
     @tokenizer = HtmlTokenizer::Tokenizer.new
     parts.each do |part|
-      @tokenizer.tokenize(part) { |name, data| tokens << [name, data] }
+      @tokenizer.tokenize(part) { |name, start, stop| tokens << [name, part[start..(stop-1)]] }
     end
     tokens
   end

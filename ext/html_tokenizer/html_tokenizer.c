@@ -15,7 +15,8 @@ static VALUE text_symbol,
   tag_start_symbol,
   attribute_value_start_symbol,
   attribute_value_end_symbol,
-  attribute_unquoted_value_symbol
+  attribute_unquoted_value_symbol,
+  malformed_symbol
 ;
 
 static void tokenizer_mark(void *ptr)
@@ -59,7 +60,7 @@ static VALUE tokenizer_initialize_method(VALUE self)
   Tokenizer_Get_Struct(self, tk);
 
   tk->current_context = 0;
-  tk->context[0] = TOKENIZER_DOCUMENT;
+  tk->context[0] = TOKENIZER_HTML;
 
   tk->attribute_value_start = 0;
   tk->found_attribute = 0;
@@ -246,28 +247,12 @@ static int is_cdata_end(struct scan_t *scan, uint32_t *length)
   return *length != 0;
 }
 
-static int scan_document(struct tokenizer_t *tk)
-{
-  uint32_t length = 0;
-  if(is_text(&tk->scan, &length)) {
-    yield(tk, text_symbol, length);
-    return 1;
-  }
-  else {
-    push_context(tk, TOKENIZER_HTML);
-    return 1;
-  }
-}
-
 static int scan_html(struct tokenizer_t *tk)
 {
   uint32_t length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_comment_start(&tk->scan)) {
+  if(is_comment_start(&tk->scan)) {
     yield(tk, comment_start_symbol, 4);
     push_context(tk, TOKENIZER_COMMENT);
     return 1;
@@ -313,10 +298,7 @@ static int scan_attributes(struct tokenizer_t *tk)
 {
   uint32_t length = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_whitespace(&tk->scan, &length)) {
+  if(is_whitespace(&tk->scan, &length)) {
     yield(tk, whitespace_symbol, length);
     return 1;
   }
@@ -352,10 +334,7 @@ static int scan_attribute_name(struct tokenizer_t *tk)
 {
   uint32_t length = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_attribute_name(&tk->scan, &length)) {
+  if(is_attribute_name(&tk->scan, &length)) {
     yield(tk, attribute_name_symbol, length);
     return 1;
   }
@@ -374,9 +353,6 @@ static int scan_attribute_value(struct tokenizer_t *tk)
   if(tk->last_token == attribute_value_end_symbol) {
     pop_context(tk);
     return 1;
-  }
-  else if(eos(&tk->scan)) {
-    return 0;
   }
   else if(is_char(&tk->scan, '/') || is_char(&tk->scan, '>')) {
     pop_context(tk);
@@ -407,10 +383,7 @@ static int scan_attribute_string(struct tokenizer_t *tk)
 {
   uint32_t length = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_char(&tk->scan, tk->attribute_value_start)) {
+  if(is_char(&tk->scan, tk->attribute_value_start)) {
     yield(tk, attribute_value_end_symbol, 1);
     pop_context(tk);
     return 1;
@@ -426,10 +399,7 @@ static int scan_comment(struct tokenizer_t *tk)
 {
   uint32_t length = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_comment_end(&tk->scan, &length)) {
+  if(is_comment_end(&tk->scan, &length)) {
     yield(tk, text_symbol, length);
     yield(tk, comment_end_symbol, 3);
     return 1;
@@ -445,10 +415,7 @@ static int scan_cdata(struct tokenizer_t *tk)
 {
   uint32_t length = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_cdata_end(&tk->scan, &length)) {
+  if(is_cdata_end(&tk->scan, &length)) {
     yield(tk, text_symbol, length);
     yield(tk, cdata_end_symbol, 3);
     return 1;
@@ -466,10 +433,7 @@ static int scan_script_tag(struct tokenizer_t *tk)
   const char *tag_name = NULL;
   int closing_tag = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_tag_start(&tk->scan, &length, &closing_tag, &tag_name, &tag_name_length)) {
+  if(is_tag_start(&tk->scan, &length, &closing_tag, &tag_name, &tag_name_length)) {
     if(closing_tag && !strncasecmp((const char *)tag_name, "script", tag_name_length)) {
       pop_context(tk);
     } else {
@@ -494,10 +458,7 @@ static int scan_textarea_tag(struct tokenizer_t *tk)
   const char *tag_name = NULL;
   int closing_tag = 0;
 
-  if(eos(&tk->scan)) {
-    return 0;
-  }
-  else if(is_tag_start(&tk->scan, &length, &closing_tag, &tag_name, &tag_name_length)) {
+  if(is_tag_start(&tk->scan, &length, &closing_tag, &tag_name, &tag_name_length)) {
     if(closing_tag && !strncasecmp((const char *)tag_name, "textarea", tag_name_length)) {
       pop_context(tk);
     } else {
@@ -521,8 +482,6 @@ static int scan_once(struct tokenizer_t *tk)
   switch(tk->context[tk->current_context]) {
   case TOKENIZER_NONE:
     break;
-  case TOKENIZER_DOCUMENT:
-    return scan_document(tk);
   case TOKENIZER_HTML:
     return scan_html(tk);
   case TOKENIZER_COMMENT:
@@ -549,7 +508,7 @@ static void scan_all(struct tokenizer_t *tk)
 {
   while(!eos(&tk->scan) && scan_once(tk)) {}
   if(!eos(&tk->scan)) {
-    // unparseable data at eof.
+    yield(tk, malformed_symbol, length_remaining(&tk->scan));
   }
   return;
 }
@@ -594,4 +553,5 @@ void Init_html_tokenizer()
   attribute_value_start_symbol = ID2SYM(rb_intern("attribute_value_start"));
   attribute_value_end_symbol = ID2SYM(rb_intern("attribute_value_end"));
   attribute_unquoted_value_symbol = ID2SYM(rb_intern("attribute_unquoted_value"));
+  malformed_symbol = ID2SYM(rb_intern("malformed"));
 }

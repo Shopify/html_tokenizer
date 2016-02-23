@@ -5,6 +5,7 @@ static VALUE text_symbol,
   comment_start_symbol,
   comment_end_symbol,
   tag_start_symbol,
+  tag_name_symbol,
   cdata_start_symbol,
   cdata_end_symbol,
   whitespace_symbol,
@@ -166,6 +167,21 @@ static int is_tag_start(struct scan_t *scan, uint32_t *length,
   return *length > start;
 }
 
+static int is_tag_name(struct scan_t *scan, const char **tag_name, uint32_t *tag_name_length)
+{
+  uint32_t i;
+
+  *tag_name_length = 0;
+  *tag_name = &scan->string[scan->cursor];
+  for(i = scan->cursor;i < scan->length; i++, (*tag_name_length)++) {
+    if(scan->string[i] == ' ' || scan->string[i] == '\t' ||
+        scan->string[i] == '\r' || scan->string[i] == '\n' ||
+        scan->string[i] == '>' || scan->string[i] == '/')
+      break;
+  }
+
+  return *tag_name_length != 0;
+}
 static int is_whitespace(struct scan_t *scan, uint32_t *length)
 {
   uint32_t i;
@@ -201,7 +217,7 @@ static int is_unquoted_value(struct scan_t *scan, uint32_t *length)
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
     if(scan->string[i] == ' ' || scan->string[i] == '\r' ||
         scan->string[i] == '\n' || scan->string[i] == '\t' ||
-        scan->string[i] == '/' || scan->string[i] == '>')
+        scan->string[i] == '>')
       break;
   }
   return *length != 0;
@@ -249,8 +265,7 @@ static int is_cdata_end(struct scan_t *scan, uint32_t *length)
 
 static int scan_html(struct tokenizer_t *tk)
 {
-  uint32_t length = 0, tag_name_length = 0;
-  const char *tag_name = NULL;
+  uint32_t length = 0;
 
   if(is_comment_start(&tk->scan)) {
     yield(tk, comment_start_symbol, 4);
@@ -267,15 +282,17 @@ static int scan_html(struct tokenizer_t *tk)
     push_context(tk, TOKENIZER_CDATA);
     return 1;
   }
-  else if(is_tag_start(&tk->scan, &length, &tk->is_closing_tag, &tag_name, &tag_name_length)) {
-    yield(tk, tag_start_symbol, length);
-    tk->is_script = tk->is_textarea = 0;
-    if(!strncasecmp((const char *)tag_name, "script", tag_name_length)) {
-      tk->is_script = 1;
-    } else if(!strncasecmp((const char *)tag_name, "textarea", tag_name_length)) {
-      tk->is_textarea = 1;
+  else if(is_char(&tk->scan, '<')) {
+    yield(tk, tag_start_symbol, 1);
+    if(is_char(&tk->scan, '/')) {
+      tk->is_closing_tag = 1;
+      yield(tk, slash_symbol, 1);
     }
-    push_context(tk, TOKENIZER_ATTRIBUTES);
+    else {
+      tk->is_closing_tag = 0;
+    }
+    tk->is_script = tk->is_textarea = 0;
+    push_context(tk, TOKENIZER_TAG);
     return 1;
   }
   else if(is_char(&tk->scan, '>')) {
@@ -289,6 +306,37 @@ static int scan_html(struct tokenizer_t *tk)
   }
   else if(is_text(&tk->scan, &length)) {
     yield(tk, text_symbol, length);
+    return 1;
+  }
+  return 0;
+}
+
+static int scan_tag(struct tokenizer_t *tk)
+{
+  uint32_t length = 0, tag_name_length = 0;
+  const char *tag_name = NULL;
+
+  if(is_tag_name(&tk->scan, &tag_name, &tag_name_length)) {
+    yield(tk, tag_name_symbol, tag_name_length);
+    if(!strncasecmp((const char *)tag_name, "script", tag_name_length)) {
+      tk->is_script = 1;
+    } else if(!strncasecmp((const char *)tag_name, "textarea", tag_name_length)) {
+      tk->is_textarea = 1;
+    }
+    return 1;
+  }
+  else if(is_char(&tk->scan, '/')) {
+    yield(tk, slash_symbol, 1);
+    push_context(tk, TOKENIZER_ATTRIBUTES);
+    return 1;
+  }
+  else if(is_whitespace(&tk->scan, &length)) {
+    yield(tk, whitespace_symbol, length);
+    push_context(tk, TOKENIZER_ATTRIBUTES);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '>')) {
+    pop_context(tk);
     return 1;
   }
   return 0;
@@ -484,6 +532,8 @@ static int scan_once(struct tokenizer_t *tk)
     break;
   case TOKENIZER_HTML:
     return scan_html(tk);
+  case TOKENIZER_TAG:
+    return scan_tag(tk);
   case TOKENIZER_COMMENT:
     return scan_comment(tk);
   case TOKENIZER_CDATA:
@@ -542,6 +592,7 @@ void Init_html_tokenizer()
   comment_start_symbol = ID2SYM(rb_intern("comment_start"));
   comment_end_symbol = ID2SYM(rb_intern("comment_end"));
   tag_start_symbol = ID2SYM(rb_intern("tag_start"));
+  tag_name_symbol = ID2SYM(rb_intern("tag_name"));
   cdata_start_symbol = ID2SYM(rb_intern("cdata_start"));
   cdata_end_symbol = ID2SYM(rb_intern("cdata_end"));
   whitespace_symbol = ID2SYM(rb_intern("whitespace"));

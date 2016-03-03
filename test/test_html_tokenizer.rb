@@ -79,7 +79,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
 
   def test_tokenize_tag_name_ending_with_slash
     result = tokenize("<div/1>")
-    assert_equal [[:tag_start, "<"], [:tag_name, "div"], [:slash, "/"], [:attribute_name, "1"], [:tag_end, ">"]], result
+    assert_equal [[:tag_start, "<"], [:tag_name, "div"], [:solidus, "/"], [:attribute_name, "1"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_empty_tag
@@ -87,14 +87,14 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     assert_equal [[:tag_start, "<"], [:tag_end, ">"]], result
   end
 
-  def test_tokenize_tag_with_slash
+  def test_tokenize_tag_with_solidus
     result = tokenize("</>")
-    assert_equal [[:tag_start, "<"], [:slash, "/"], [:tag_end, ">"]], result
+    assert_equal [[:tag_start, "<"], [:solidus, "/"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_end_tag
     result = tokenize("</div>")
-    assert_equal [[:tag_start, "<"], [:slash, "/"], [:tag_name, "div"], [:tag_end, ">"]], result
+    assert_equal [[:tag_start, "<"], [:solidus, "/"], [:tag_name, "div"], [:tag_end, ">"]], result
   end
 
   def test_tokenize_tag_attribute_with_double_quote
@@ -106,7 +106,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     ], result
   end
 
-  def test_tokenize_unquoted_attributes_separated_with_slash
+  def test_tokenize_unquoted_attributes_separated_with_solidus
     result = tokenize('<div foo=1/bar=2>')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
@@ -115,12 +115,12 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     ], result
   end
 
-  def test_tokenize_quoted_attributes_separated_with_slash
+  def test_tokenize_quoted_attributes_separated_with_solidus
     result = tokenize('<div foo="1"/bar="2">')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
       [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "1"], [:attribute_value_end, "\""],
-      [:slash, "/"],
+      [:solidus, "/"],
       [:attribute_name, "bar"], [:equal, "="], [:attribute_value_start, "\""], [:text, "2"], [:attribute_value_end, "\""],
       [:tag_end, ">"]
     ], result
@@ -196,7 +196,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
       [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "bar"], [:attribute_value_end, "\""], [:whitespace, " "],
-      [:slash, "/"], [:tag_end, ">"]
+      [:solidus, "/"], [:tag_end, ">"]
     ], result
   end
 
@@ -205,7 +205,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     assert_equal [
       [:tag_start, "<"], [:tag_name, "script"], [:tag_end, ">"],
       [:text, "foo "], [:text, "<b"], [:text, "> bar"],
-      [:tag_start, "<"], [:slash, "/"], [:tag_name, "script"], [:tag_end, ">"],
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "script"], [:tag_end, ">"],
     ], result
   end
 
@@ -214,7 +214,16 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
     assert_equal [
       [:tag_start, "<"], [:tag_name, "textarea"], [:tag_end, ">"],
       [:text, "hello"],
-      [:tag_start, "<"], [:slash, "/"], [:tag_name, "textarea"], [:tag_end, ">"],
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "textarea"], [:tag_end, ">"],
+    ], result
+  end
+
+  def test_tokenize_style_tag
+    result = tokenize('<style></div></style>')
+    assert_equal [
+      [:tag_start, "<"], [:tag_name, "style"], [:tag_end, ">"],
+      [:text, "</div"], [:text, ">"],
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "style"], [:tag_end, ">"],
     ], result
   end
 
@@ -225,7 +234,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
       [:attribute_name, "type"], [:equal, "="], [:attribute_value_start, "\""], [:text, "text/html"], [:attribute_value_end, "\""],
       [:tag_end, ">"],
       [:text, "foo "], [:text, "<b"], [:text, "> bar"],
-      [:tag_start, "<"], [:slash, "/"], [:tag_name, "script"], [:tag_end, ">"],
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "script"], [:tag_end, ">"],
     ], result
   end
 
@@ -257,7 +266,7 @@ class TestHtmlTokenizer < MiniTest::Unit::TestCase
       [:attribute_name, "href"], [:whitespace, " "], [:equal, "="],
       [:attribute_value_start, "\""], [:text, "http://www.cra-arc.gc.ca/tx/bsnss/tpcs/gst-tps/menu-eng.html"], [:attribute_value_end, "\""],
       [:tag_end, ">"], [:text, "GST/HST"],
-      [:tag_start, "<"], [:slash, "/"], [:tag_name, "a"], [:tag_end, ">"]
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "a"], [:tag_end, ">"]
     ], result
   end
 

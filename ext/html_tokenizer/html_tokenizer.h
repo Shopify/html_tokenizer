@@ -3,10 +3,12 @@
 enum tokenizer_context {
   TOKENIZER_NONE = 0,
   TOKENIZER_HTML,
-  TOKENIZER_TAG,
+  TOKENIZER_OPEN_TAG,
   TOKENIZER_CDATA,
-  TOKENIZER_SCRIPT_TAG,
-  TOKENIZER_TEXTAREA_TAG,
+  TOKENIZER_RCDATA, // title, textarea
+  TOKENIZER_RAWTEXT, // style, xmp, iframe, noembed, noframes
+  TOKENIZER_SCRIPT_DATA, // script
+  TOKENIZER_PLAINTEXT, // plaintext
   TOKENIZER_COMMENT,
   TOKENIZER_ATTRIBUTES,
   TOKENIZER_ATTRIBUTE_NAME,
@@ -28,7 +30,10 @@ struct tokenizer_t
 
   char attribute_value_start;
   int found_attribute;
-  int is_script, is_textarea, is_closing_tag;
+
+  char *current_tag;
+
+  int is_closing_tag;
   VALUE last_token;
 
   struct scan_t scan;

@@ -204,23 +204,23 @@ class TestHtmlParser < Minitest::Test
     assert_equal " foo ", @parser.cdata_text
   end
 
-  def test_textarea_rawtext
-    parse("<textarea>")
+  def test_plaintext_never_stops_parsing
+    parse("<plaintext>")
     assert_equal :rawtext, @parser.context
-    assert_equal name, @parser.tag_name
+    assert_equal "plaintext", @parser.tag_name
     assert_equal "", @parser.rawtext_text
 
     parse("some", "<text")
     assert_equal :rawtext, @parser.context
     assert_equal "some<text", @parser.rawtext_text
 
-    parse("<textarea")
+    parse("<plaintext")
     assert_equal :rawtext, @parser.context
-    assert_equal "some<text<#{name}", @parser.rawtext_text
+    assert_equal "some<text<plaintext", @parser.rawtext_text
 
-    parse("</textarea>")
+    parse("</plaintext>")
     assert_equal :rawtext, @parser.context
-    assert_equal "some<text<textarea", @parser.rawtext_text
+    assert_equal "some<text<plaintext</plaintext>", @parser.rawtext_text
   end
 
   %w(title textarea style xmp iframe noembed noframes).each do |name|

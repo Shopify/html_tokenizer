@@ -1,6 +1,8 @@
 #include <ruby.h>
 #include "tokenizer.h"
 
+static VALUE cTokenizer = Qnil;
+
 static void tokenizer_mark(void *ptr)
 {}
 
@@ -590,10 +592,9 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   return Qnil;
 }
 
-void Init_tokenizer()
+void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer)
 {
-  VALUE mHtmlTokenizer = rb_define_module("HtmlTokenizer");
-  VALUE cTokenizer = rb_define_class_under(mHtmlTokenizer, "Tokenizer", rb_cObject);
+  cTokenizer = rb_define_class_under(mHtmlTokenizer, "Tokenizer", rb_cObject);
   rb_define_alloc_func(cTokenizer, tokenizer_allocate);
   rb_define_method(cTokenizer, "initialize", tokenizer_initialize_method, 0);
   rb_define_method(cTokenizer, "tokenize", tokenizer_tokenize_method, 1);

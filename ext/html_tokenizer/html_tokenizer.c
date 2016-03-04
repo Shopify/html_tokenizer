@@ -2,10 +2,11 @@
 #include "tokenizer.h"
 #include "parser.h"
 
+static VALUE mHtmlTokenizer = Qnil;
 
 void Init_html_tokenizer()
 {
-  VALUE mHtmlTokenizer = rb_define_module("HtmlTokenizer");
-  Init_tokenizer(mHtmlTokenizer);
-  Init_parser(mHtmlTokenizer);
+  mHtmlTokenizer = rb_define_class("HtmlTokenizer", rb_cObject);
+  Init_html_tokenizer_tokenizer(mHtmlTokenizer);
+  Init_html_tokenizer_parser(mHtmlTokenizer);
 }

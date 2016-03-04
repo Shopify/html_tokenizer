@@ -251,7 +251,7 @@ class TestHtmlParser < Minitest::Test
   private
 
   def parse(*parts)
-    @parser ||= HtmlTokenizer::Parser.new
+    @parser ||= HtmlTokenizer::TheGoddamParser.new
     parts.each do |part|
       @parser.parse(part)
     end

@@ -1,6 +1,8 @@
 #include <ruby.h>
 #include "parser.h"
 
+static VALUE cParser = Qnil;
+
 static void parser_mark(void *ptr)
 {}
 
@@ -15,7 +17,7 @@ static size_t parser_memsize(const void *ptr)
   return ptr ? sizeof(struct parser_t) : 0;
 }
 
-const rb_data_type_t parser_data_type = {
+const rb_data_type_t html_tokenizer_parser_data_type = {
   "html_tokenizer_parser",
   { parser_mark, parser_free, parser_memsize, },
 #if defined(RUBY_TYPED_FREE_IMMEDIATELY)
@@ -28,7 +30,7 @@ static VALUE parser_allocate(VALUE klass)
   VALUE obj;
   struct parser_t *parser;
 
-  obj = TypedData_Make_Struct(klass, struct parser_t, &parser_data_type, parser);
+  obj = TypedData_Make_Struct(klass, struct parser_t, &html_tokenizer_parser_data_type, parser);
 
   return obj;
 }
@@ -354,10 +356,9 @@ static VALUE parser_rawtext_text_method(VALUE self)
   return ref_to_str(parser, &parser->rawtext.text);
 }
 
-void Init_parser()
+void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
 {
-  VALUE mHtmlTokenizer = rb_define_module("HtmlTokenizer");
-  VALUE cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
+  cParser = rb_define_class_under(mHtmlTokenizer, "TheGoddamParser", rb_cObject);
   rb_define_alloc_func(cParser, parser_allocate);
   rb_define_method(cParser, "initialize", parser_initialize_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);

@@ -1,2 +1,2 @@
 require 'mkmf'
-create_makefile('html_tokenizer/html_tokenizer')
+create_makefile('html_tokenizer')

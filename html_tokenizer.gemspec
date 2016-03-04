@@ -1,13 +1,22 @@
-Gem::Specification.new do |s|
-  s.name    = "html_tokenizer"
-  s.version = "0.0.1"
-  s.summary = "HTML Tokenizer"
-  s.author  = "Francois Chagnon"
+require 'rake'
+require 'rake/extensiontask'
 
-  s.files = Dir.glob("ext/**/*.{c,rb}") +
+Gem::Specification.new do |spec|
+  spec.name    = "html_tokenizer"
+  spec.version = "0.0.1"
+  spec.summary = "HTML Tokenizer"
+  spec.author  = "Francois Chagnon"
+
+  spec.files = Dir.glob("ext/**/*.{c,h,rb}") +
             Dir.glob("lib/**/*.rb")
 
-  s.extensions << "ext/html_tokenizer/extconf.rb"
+  spec.extensions    = ['ext/html_tokenizer/extconf.rb']
+  spec.files         = `git ls-files -z`.split("\x0")
+  spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
+  spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
+  spec.require_paths = ["lib", "ext"]
 
-  s.add_development_dependency "rake-compiler"
+  spec.add_development_dependency 'rake-compiler', '~> 0'
+
+  Rake::ExtensionTask.new('html_tokenizer', spec)
 end

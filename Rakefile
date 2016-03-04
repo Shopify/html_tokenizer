@@ -1,28 +1,20 @@
 # -*- ruby -*-
 
 require "rubygems"
-require "hoe"
-require "rake/extensiontask"
+require 'rake'
+require 'rake/testtask'
+require 'bundler/gem_tasks'
+require 'rake/extensiontask'
 
-# Hoe.plugin :compiler
-# Hoe.plugin :gem_prelude_sucks
-# Hoe.plugin :inline
-# Hoe.plugin :minitest
-# Hoe.plugin :racc
-# Hoe.plugin :rcov
-# Hoe.plugin :rdoc
+Rake::ExtensionTask.new("html_tokenizer")
 
-Hoe.spec "html_tokenizer" do
-  developer("EiNSTeiN_", "einstein@g3nius.org")
-  license("MIT")
+task :default => :test
 
-  self.readme_file = "README.md"
-  self.extra_dev_deps << ['rake-compiler', '>= 0']
-  self.spec_extras = { extensions: ["ext/html_tokenizer/extconf.rb"] }
+task :test => ['test:unit']
 
-  Rake::ExtensionTask.new('html_tokenizer', spec) do |ext|
-    ext.lib_dir = File.join('lib', 'html_tokenizer')
+namespace :test do
+  Rake::TestTask.new(:unit => :compile) do |t|
+    t.libs << 'lib' << 'test'
+    t.test_files = FileList['test/unit/**/*_test.rb']
   end
 end
-
-Rake::Task[:test].prerequisites << :compile

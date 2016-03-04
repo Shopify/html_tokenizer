@@ -60,7 +60,7 @@ struct tokenizer_t
 };
 
 
-void Init_tokenizer();
+void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer);
 void tokenizer_init(struct tokenizer_t *tk);
 void scan_all(struct tokenizer_t *tk);
 

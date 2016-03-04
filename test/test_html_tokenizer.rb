@@ -1,10 +1,16 @@
 require "minitest/autorun"
 require "html_tokenizer"
 
-class TestHtmlTokenizer < MiniTest::Unit::TestCase
+class TestHtmlTokenizer < Minitest::Test
   def test_tokenize_text
     result = tokenize("\n    hello world\n    ")
     assert_equal [[:text, "\n    hello world\n    "]], result
+  end
+
+  def test_namespace_tag_name_multipart
+    assert_equal [
+      [:tag_start, "<"], [:tag_name, "foo:"], [:tag_name, "bar"],
+    ], tokenize("<foo:", "bar")
   end
 
   def test_tokenize_doctype

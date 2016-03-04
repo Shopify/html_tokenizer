@@ -16,8 +16,25 @@ enum tokenizer_context {
   TOKENIZER_ATTRIBUTE_STRING,
 };
 
+VALUE text_symbol,
+  comment_start_symbol,
+  comment_end_symbol,
+  tag_start_symbol,
+  tag_name_symbol,
+  cdata_start_symbol,
+  cdata_end_symbol,
+  whitespace_symbol,
+  attribute_name_symbol,
+  solidus_symbol,
+  equal_symbol,
+  tag_end_symbol,
+  attribute_value_start_symbol,
+  attribute_value_end_symbol,
+  attribute_unquoted_value_symbol,
+  malformed_symbol
+;
+
 struct scan_t {
-  VALUE source;
   const char *string;
   uint32_t cursor;
   uint32_t length;
@@ -27,6 +44,9 @@ struct tokenizer_t
 {
   enum tokenizer_context context[100];
   uint32_t current_context;
+
+  void *callback_data;
+  void (*f_callback)(struct tokenizer_t *tk, VALUE sym, uint32_t length, void *data);
 
   char attribute_value_start;
   int found_attribute;
@@ -38,6 +58,11 @@ struct tokenizer_t
 
   struct scan_t scan;
 };
+
+
+void Init_tokenizer();
+void tokenizer_init(struct tokenizer_t *tk);
+void scan_all(struct tokenizer_t *tk);
 
 extern const rb_data_type_t tokenizer_data_type;
 #define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct tokenizer_t, &tokenizer_data_type, sval)

@@ -3,6 +3,16 @@
 
 static VALUE cParser = Qnil;
 
+VALUE
+  none_symbol,
+  tag_symbol,
+  attribute_symbol,
+  attribute_value_symbol,
+  rawtext_symbol,
+  comment_symbol,
+  cdata_symbol
+;
+
 static void parser_mark(void *ptr)
 {}
 
@@ -358,7 +368,7 @@ static VALUE parser_rawtext_text_method(VALUE self)
 
 void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
 {
-  cParser = rb_define_class_under(mHtmlTokenizer, "TheGoddamParser", rb_cObject);
+  cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
   rb_define_alloc_func(cParser, parser_allocate);
   rb_define_method(cParser, "initialize", parser_initialize_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);

@@ -16,7 +16,7 @@ enum tokenizer_context {
   TOKENIZER_ATTRIBUTE_STRING,
 };
 
-VALUE text_symbol,
+extern VALUE text_symbol,
   comment_start_symbol,
   comment_end_symbol,
   tag_start_symbol,

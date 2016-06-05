@@ -11,16 +11,6 @@ enum parser_context {
   PARSER_CDATA,
 };
 
-VALUE
-  none_symbol,
-  tag_symbol,
-  attribute_symbol,
-  attribute_value_symbol,
-  rawtext_symbol,
-  comment_symbol,
-  cdata_symbol
-;
-
 struct parser_document_t {
   uint32_t length;
   char *data;

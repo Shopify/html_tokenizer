@@ -3,6 +3,24 @@
 
 static VALUE cTokenizer = Qnil;
 
+VALUE text_symbol,
+  comment_start_symbol,
+  comment_end_symbol,
+  tag_start_symbol,
+  tag_name_symbol,
+  cdata_start_symbol,
+  cdata_end_symbol,
+  whitespace_symbol,
+  attribute_name_symbol,
+  solidus_symbol,
+  equal_symbol,
+  tag_end_symbol,
+  attribute_value_start_symbol,
+  attribute_value_end_symbol,
+  attribute_unquoted_value_symbol,
+  malformed_symbol
+;
+
 static void tokenizer_mark(void *ptr)
 {}
 

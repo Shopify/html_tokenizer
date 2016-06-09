@@ -17,6 +17,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib", "ext"]
 
   spec.add_development_dependency 'rake-compiler', '~> 0'
+  spec.add_development_dependency 'minitest', '~> 0'
 
   Rake::ExtensionTask.new('html_tokenizer', spec)
 end

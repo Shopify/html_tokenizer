@@ -9,7 +9,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
 
   def test_open_tag
     parse("<div")
-    assert_equal :tag, @parser.context
+    assert_equal :tag_name, @parser.context
     assert_equal "div", @parser.tag_name
   end
 
@@ -28,6 +28,23 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo:", @parser.tag_name
     parse("bar")
     assert_equal "foo:bar", @parser.tag_name
+  end
+
+  def test_solidus_after_tag_name
+    parse("<foo/")
+    assert_equal "foo", @parser.tag_name
+    assert_equal :tag, @parser.context
+  end
+
+  def test_whitespace_after_tag_name
+    parse("<foo ")
+    assert_equal "foo", @parser.tag_name
+    assert_equal :tag, @parser.context
+  end
+
+  def test_context_is_tag_name_just_after_solidus
+    parse("</")
+    assert_equal :tag_name, @parser.context
   end
 
   def test_close_tag
@@ -251,7 +268,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
       assert_equal "some<text<#{name}", @parser.rawtext_text
 
       parse("</#{name}")
-      assert_equal :tag, @parser.context
+      assert_equal :tag_name, @parser.context
       assert_equal "some<text<#{name}", @parser.rawtext_text
 
       parse(">")

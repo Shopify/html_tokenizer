@@ -3,7 +3,7 @@
 
 static VALUE cParser = Qnil;
 
-VALUE
+static VALUE
   none_symbol,
   tag_symbol,
   attribute_symbol,
@@ -61,7 +61,7 @@ static inline void parser_append_ref(struct token_reference_t *dest, struct toke
 static void parse_none(struct parser_t *parser, struct token_reference_t *ref)
 {
   if(ref->type == tag_start_symbol) {
-    parser->context = PARSER_TAG;
+    parser->context = PARSER_TAG_NAME;
     parser->tag.name.type = Qnil;
   }
   else if(ref->type == comment_start_symbol) {
@@ -108,6 +108,28 @@ static void parse_cdata(struct parser_t *parser, struct token_reference_t *ref)
   return;
 }
 
+static void parse_tag_name(struct parser_t *parser, struct token_reference_t *ref)
+{
+  if(ref->type == tag_end_symbol) {
+    parser->context = PARSER_NONE;
+  }
+  else if(ref->type == tag_name_symbol) {
+    parser_append_ref(&parser->tag.name, ref);
+  }
+  else if(ref->type == whitespace_symbol) {
+    parser->context = PARSER_TAG;
+  }
+  else if(ref->type == solidus_symbol) {
+    if(parser->tk.context[parser->tk.current_context] == TOKENIZER_HTML) {
+      // solidus with opening tag, still expecting a tag name
+    } else {
+      // solidus not in tag name.
+      parser->context = PARSER_TAG;
+    }
+  }
+  return;
+}
+
 static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
 {
   if(ref->type == tag_end_symbol) {
@@ -127,6 +149,7 @@ static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
     parser->attribute.value.type = Qnil;
     parser->attribute.is_quoted = 1;
   }
+  return;
 }
 
 static void parse_attribute(struct parser_t *parser, struct token_reference_t *ref)
@@ -210,6 +233,9 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, VALUE sym, uint32_t
     else
       parse_none(parser, &ref);
     break;
+  case PARSER_TAG_NAME:
+    parse_tag_name(parser, &ref);
+    break;
   case PARSER_TAG:
     parse_tag(parser, &ref);
     break;
@@ -232,7 +258,6 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, VALUE sym, uint32_t
 
   return;
 }
-
 
 static VALUE parser_initialize_method(VALUE self)
 {
@@ -302,6 +327,8 @@ static VALUE parser_context_method(VALUE self)
   switch(parser->context) {
   case PARSER_NONE:
     return rawtext_context(parser) ? rawtext_symbol : none_symbol;
+  case PARSER_TAG_NAME:
+    return tag_name_symbol;
   case PARSER_TAG:
     return tag_symbol;
   case PARSER_ATTRIBUTE:

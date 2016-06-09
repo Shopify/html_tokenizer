@@ -30,6 +30,7 @@ struct parser_tag_t {
 struct parser_attribute_t {
   struct token_reference_t name;
   struct token_reference_t value;
+  int is_quoted;
 };
 
 struct parser_rawtext_t {

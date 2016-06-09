@@ -6,7 +6,7 @@ static VALUE mHtmlTokenizer = Qnil;
 
 void Init_html_tokenizer()
 {
-  mHtmlTokenizer = rb_define_class("HtmlTokenizer", rb_cObject);
+  mHtmlTokenizer = rb_define_module("HtmlTokenizer");
   Init_html_tokenizer_tokenizer(mHtmlTokenizer);
   Init_html_tokenizer_parser(mHtmlTokenizer);
 }

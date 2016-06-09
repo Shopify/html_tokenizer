@@ -568,7 +568,7 @@ static int scan_once(struct tokenizer_t *tk)
   case TOKENIZER_RCDATA:
   case TOKENIZER_RAWTEXT:
   case TOKENIZER_SCRIPT_DATA:
-    /* we don't consume character rferences so all
+    /* we don't consume character references so all
       of these states are effectively the same */
     return scan_rawtext(tk);
   case TOKENIZER_PLAINTEXT:

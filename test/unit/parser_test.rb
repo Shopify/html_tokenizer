@@ -1,7 +1,7 @@
 require "minitest/autorun"
 require "html_tokenizer"
 
-class TestHtmlParser < Minitest::Test
+class HtmlTokenizer::ParserTest < Minitest::Test
   def test_empty_context
     parse
     assert_equal :none, @parser.context
@@ -20,6 +20,7 @@ class TestHtmlParser < Minitest::Test
     parse('bar"')
     assert_equal :tag, @parser.context
     assert_equal 'foobar', @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
   end
 
   def test_multi_part_namespace_tag
@@ -64,6 +65,7 @@ class TestHtmlParser < Minitest::Test
     assert_equal "div", @parser.tag_name
     assert_equal nil, @parser.attribute_name
     assert_equal "foo", @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
     assert_equal :none, @parser.context
   end
 
@@ -72,6 +74,7 @@ class TestHtmlParser < Minitest::Test
     assert_equal "div", @parser.tag_name
     assert_equal nil, @parser.attribute_name
     assert_equal 'foo', @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
     assert_equal :none, @parser.context
   end
   def test_attribute_value_equal_and_tag_close
@@ -86,12 +89,14 @@ class TestHtmlParser < Minitest::Test
     parse("<div '")
     assert_equal nil, @parser.attribute_name
     assert_equal nil, @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
     assert_equal :attribute_value, @parser.context
   end
 
   def test_attribute_name_and_value_open_quote
     parse("<div foo='")
     assert_equal nil, @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
     assert_equal :attribute_value, @parser.context
   end
 
@@ -107,6 +112,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=/bar")
     assert_equal "bar", @parser.attribute_name
     assert_equal nil, @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :attribute, @parser.context
   end
 
@@ -118,6 +124,7 @@ class TestHtmlParser < Minitest::Test
     parse("/baz")
     assert_equal "baz", @parser.attribute_name
     assert_equal nil, @parser.attribute_value
+    assert_equal true, @parser.attribute_quoted?
     assert_equal :attribute, @parser.context
   end
 
@@ -125,6 +132,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=bar")
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :attribute_value, @parser.context
   end
 
@@ -132,6 +140,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=bar>")
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :none, @parser.context
   end
 
@@ -139,6 +148,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=ba", "r", "/baz")
     assert_equal "baz", @parser.attribute_name
     assert_equal nil, @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :attribute, @parser.context
   end
 
@@ -146,6 +156,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=ba", "r", " baz")
     assert_equal "baz", @parser.attribute_name
     assert_equal nil, @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :attribute, @parser.context
   end
 
@@ -153,6 +164,7 @@ class TestHtmlParser < Minitest::Test
     parse("<div foo=ba", "r", "&baz")
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar&baz", @parser.attribute_value
+    assert_equal false, @parser.attribute_quoted?
     assert_equal :attribute_value, @parser.context
   end
 

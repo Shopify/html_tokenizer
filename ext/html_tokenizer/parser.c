@@ -125,6 +125,7 @@ static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
     parser->context = PARSER_ATTRIBUTE_VALUE;
     parser->attribute.name.type = Qnil;
     parser->attribute.value.type = Qnil;
+    parser->attribute.is_quoted = 1;
   }
 }
 
@@ -138,10 +139,12 @@ static void parse_attribute(struct parser_t *parser, struct token_reference_t *r
   }
   else if(ref->type == attribute_value_start_symbol) {
     parser->context = PARSER_ATTRIBUTE_VALUE;
+    parser->attribute.is_quoted = 1;
   }
   else if(ref->type == attribute_unquoted_value_symbol) {
     parser->context = PARSER_ATTRIBUTE_UNQUOTED_VALUE;
     parser_append_ref(&parser->attribute.value, ref);
+    parser->attribute.is_quoted = 0;
   }
 
   return;
@@ -345,6 +348,13 @@ static VALUE parser_attribute_value_method(VALUE self)
   return ref_to_str(parser, &parser->attribute.value);
 }
 
+static VALUE parser_attribute_is_quoted_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return parser->attribute.is_quoted ? Qtrue : Qfalse;
+}
+
 static VALUE parser_comment_text_method(VALUE self)
 {
   struct parser_t *parser = NULL;
@@ -376,6 +386,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);
   rb_define_method(cParser, "attribute_name", parser_attribute_name_method, 0);
   rb_define_method(cParser, "attribute_value", parser_attribute_value_method, 0);
+  rb_define_method(cParser, "attribute_quoted?", parser_attribute_is_quoted_method, 0);
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);
   rb_define_method(cParser, "cdata_text", parser_cdata_text_method, 0);
   rb_define_method(cParser, "rawtext_text", parser_rawtext_text_method, 0);

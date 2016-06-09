@@ -1,7 +1,7 @@
 require "minitest/autorun"
 require "html_tokenizer"
 
-class TestHtmlTokenizer < Minitest::Test
+class HtmlTokenizer::TokenizerTest < Minitest::Test
   def test_tokenize_text
     result = tokenize("\n    hello world\n    ")
     assert_equal [[:text, "\n    hello world\n    "]], result

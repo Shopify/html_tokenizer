@@ -1,6 +1,3 @@
-require 'rake'
-require 'rake/extensiontask'
-
 Gem::Specification.new do |spec|
   spec.name    = "html_tokenizer"
   spec.version = "0.0.1"
@@ -16,8 +13,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib", "ext"]
 
+  spec.add_development_dependency 'rake', '~> 0'
   spec.add_development_dependency 'rake-compiler', '~> 0'
   spec.add_development_dependency 'minitest', '~> 0'
-
-  Rake::ExtensionTask.new('html_tokenizer', spec)
 end

@@ -17,7 +17,8 @@ PLATFORMS
 DEPENDENCIES
   html_tokenizer!
   minitest
-  rake-compiler (~> 0)
+  rake
+  rake-compiler
 
 BUNDLED WITH
    1.12.3

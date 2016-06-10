@@ -27,9 +27,13 @@ static void tokenizer_mark(void *ptr)
 static void tokenizer_free(void *ptr)
 {
   struct tokenizer_t *tokenizer = ptr;
-  if(tokenizer->current_tag)
-    free(tokenizer->current_tag);
-  xfree(tokenizer);
+  if(tokenizer) {
+    if(tokenizer->current_tag) {
+      xfree(tokenizer->current_tag);
+      tokenizer->current_tag = NULL;
+    }
+    xfree(tokenizer);
+  }
 }
 
 static size_t tokenizer_memsize(const void *ptr)
@@ -185,7 +189,7 @@ static int is_tag_start(struct scan_t *scan, long unsigned int *length,
   return *length > start;
 }
 
-static int is_tag_name(struct scan_t *scan, const char **tag_name, uint32_t *tag_name_length)
+static int is_tag_name(struct scan_t *scan, const char **tag_name, unsigned long int *tag_name_length)
 {
   long unsigned int i;
 
@@ -200,7 +204,7 @@ static int is_tag_name(struct scan_t *scan, const char **tag_name, uint32_t *tag
 
   return *tag_name_length != 0;
 }
-static int is_whitespace(struct scan_t *scan, uint32_t *length)
+static int is_whitespace(struct scan_t *scan, unsigned long int *length)
 {
   long unsigned int i;
 
@@ -213,7 +217,7 @@ static int is_whitespace(struct scan_t *scan, uint32_t *length)
   return *length != 0;
 }
 
-static int is_attribute_name(struct scan_t *scan, uint32_t *length)
+static int is_attribute_name(struct scan_t *scan, unsigned long int *length)
 {
   long unsigned int i;
 
@@ -227,7 +231,7 @@ static int is_attribute_name(struct scan_t *scan, uint32_t *length)
   return *length != 0;
 }
 
-static int is_unquoted_value(struct scan_t *scan, uint32_t *length)
+static int is_unquoted_value(struct scan_t *scan, unsigned long int *length)
 {
   long unsigned int i;
 
@@ -241,7 +245,7 @@ static int is_unquoted_value(struct scan_t *scan, uint32_t *length)
   return *length != 0;
 }
 
-static int is_attribute_string(struct scan_t *scan, uint32_t *length, const char attribute_value_start)
+static int is_attribute_string(struct scan_t *scan, unsigned long int *length, const char attribute_value_start)
 {
   long unsigned int i;
 
@@ -253,7 +257,7 @@ static int is_attribute_string(struct scan_t *scan, uint32_t *length, const char
   return *length != 0;
 }
 
-static int is_comment_end(struct scan_t *scan, uint32_t *length, const char **end)
+static int is_comment_end(struct scan_t *scan, unsigned long int *length, const char **end)
 {
   long unsigned int i;
 
@@ -268,7 +272,7 @@ static int is_comment_end(struct scan_t *scan, uint32_t *length, const char **en
   return *length != 0;
 }
 
-static int is_cdata_end(struct scan_t *scan, uint32_t *length, const char **end)
+static int is_cdata_end(struct scan_t *scan, unsigned long int *length, const char **end)
 {
   long unsigned int i;
 
@@ -347,21 +351,27 @@ static int scan_html(struct tokenizer_t *tk)
 
 static int scan_open_tag(struct tokenizer_t *tk)
 {
-  uint32_t length = 0, tag_name_length = 0;
+  unsigned long int length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
 
   if(is_tag_name(&tk->scan, &tag_name, &tag_name_length)) {
     tokenizer_callback(tk, tag_name_symbol, tag_name_length);
 
     if(tk->current_tag) {
-      char *tmp = realloc(tk->current_tag, strlen(tk->current_tag) + strlen(tag_name) + 1);
-      if(!tmp)
+      char *tmp;
+      length = strlen(tk->current_tag) + strlen(tag_name) + 1;
+      tmp = REALLOC_N(tk->current_tag, char, length);
+      if(!tmp) {
+        tk->current_tag = NULL;
         return 0;
+      }
       tk->current_tag = tmp;
     } else {
-      tk->current_tag = calloc(1, strlen(tag_name) + 1);
+      length = strlen(tag_name) + 1;
+      tk->current_tag = ALLOC_N(char, length);
       if(!tk->current_tag)
         return 0;
+      memset(tk->current_tag, 0, length);
     }
 
     strncat(tk->current_tag, tag_name, tag_name_length);
@@ -386,7 +396,7 @@ static int scan_open_tag(struct tokenizer_t *tk)
 
 static int scan_attributes(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
 
   if(is_whitespace(&tk->scan, &length)) {
     tokenizer_callback(tk, whitespace_symbol, length);
@@ -422,7 +432,7 @@ static int scan_attributes(struct tokenizer_t *tk)
 
 static int scan_attribute_name(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
 
   if(is_attribute_name(&tk->scan, &length)) {
     tokenizer_callback(tk, attribute_name_symbol, length);
@@ -438,7 +448,7 @@ static int scan_attribute_name(struct tokenizer_t *tk)
 
 static int scan_attribute_value(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
 
   if(tk->last_token == attribute_value_end_symbol) {
     pop_context(tk);
@@ -471,7 +481,7 @@ static int scan_attribute_value(struct tokenizer_t *tk)
 
 static int scan_attribute_string(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
 
   if(is_char(&tk->scan, tk->attribute_value_start)) {
     tokenizer_callback(tk, attribute_value_end_symbol, 1);
@@ -487,7 +497,7 @@ static int scan_attribute_string(struct tokenizer_t *tk)
 
 static int scan_comment(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
   const char *comment_end = NULL;
 
   if(is_comment_end(&tk->scan, &length, &comment_end)) {
@@ -505,7 +515,7 @@ static int scan_comment(struct tokenizer_t *tk)
 
 static int scan_cdata(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  unsigned long int length = 0;
   const char *cdata_end = NULL;
 
   if(is_cdata_end(&tk->scan, &length, &cdata_end)) {

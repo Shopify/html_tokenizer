@@ -19,7 +19,13 @@ static void parser_mark(void *ptr)
 static void parser_free(void *ptr)
 {
   struct parser_t *parser = ptr;
-  xfree(parser);
+  if(parser) {
+    if(parser->doc.data) {
+      xfree(parser->doc.data);
+      parser->doc.data = NULL;
+    }
+    xfree(parser);
+  }
 }
 
 static size_t parser_memsize(const void *ptr)
@@ -281,9 +287,11 @@ static int parser_document_append(struct parser_t *parser, const char *string, u
 {
   char *tmp;
 
-  tmp = realloc(parser->doc.data, parser->doc.length + length + 1);
-  if(!tmp)
+  tmp = REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
+  if(!tmp) {
+    parser->doc.data = NULL;
     return 0;
+  }
 
   parser->doc.data = tmp;
   strcpy(parser->doc.data+parser->doc.length, string);
@@ -352,7 +360,7 @@ static VALUE parser_context_method(VALUE self)
 
 static inline VALUE ref_to_str(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == Qnil)
+  if(ref->type == Qnil || parser->doc.data == NULL)
     return Qnil;
   return rb_str_new(parser->doc.data+ref->start, ref->length);
 }

@@ -62,7 +62,7 @@ struct tokenizer_t
 
 void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer);
 void tokenizer_init(struct tokenizer_t *tk);
-void scan_all(struct tokenizer_t *tk);
+void tokenizer_scan_all(struct tokenizer_t *tk);
 
 extern const rb_data_type_t tokenizer_data_type;
 #define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct tokenizer_t, &tokenizer_data_type, sval)

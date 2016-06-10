@@ -591,7 +591,7 @@ static int scan_once(struct tokenizer_t *tk)
   return 0;
 }
 
-void scan_all(struct tokenizer_t *tk)
+void tokenizer_scan_all(struct tokenizer_t *tk)
 {
   while(!eos(&tk->scan) && scan_once(tk)) {}
   if(!eos(&tk->scan)) {
@@ -621,7 +621,7 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   if(tk->current_tag)
     tk->current_tag[0] = '\0';
 
-  scan_all(tk);
+  tokenizer_scan_all(tk);
 
   xfree(tk->scan.string);
   tk->scan.string = NULL;

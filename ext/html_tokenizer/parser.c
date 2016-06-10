@@ -316,7 +316,7 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   parser->tk.scan.string = parser->doc.data;
   parser->tk.scan.length = parser->doc.length;
 
-  scan_all(&parser->tk);
+  tokenizer_scan_all(&parser->tk);
 
   return Qtrue;
 }

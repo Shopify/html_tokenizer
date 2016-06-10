@@ -26,13 +26,17 @@ static void tokenizer_mark(void *ptr)
 
 static void tokenizer_free(void *ptr)
 {
-  struct tokenizer_t *tokenizer = ptr;
-  if(tokenizer) {
-    if(tokenizer->current_tag) {
-      xfree(tokenizer->current_tag);
-      tokenizer->current_tag = NULL;
+  struct tokenizer_t *tk = ptr;
+  if(tk) {
+    if(tk->current_tag) {
+      xfree(tk->current_tag);
+      tk->current_tag = NULL;
     }
-    xfree(tokenizer);
+    if(tk->scan.string) {
+      xfree(tk->scan.string);
+      tk->scan.string = NULL;
+    }
+    xfree(tk);
   }
 }
 
@@ -619,7 +623,7 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
 
-  tk->scan.string = calloc(1, tk->scan.length+1);
+  tk->scan.string = ALLOC_N(char, tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
 
   scan_all(tk);

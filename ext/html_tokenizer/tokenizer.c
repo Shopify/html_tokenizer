@@ -105,6 +105,7 @@ VALUE token_type_to_symbol(enum token_type type)
   case TOKEN_MALFORMED:
     return ID2SYM(rb_intern("malformed"));
   }
+  return Qnil;
 }
 
 static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, long unsigned int length, void *data)

@@ -276,6 +276,18 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     ], result
   end
 
+  def test_raise_in_block
+    @tokenizer = HtmlTokenizer::Tokenizer.new
+    10.times do
+      e = assert_raises(RuntimeError) do
+        @tokenizer.tokenize("<>") do |part|
+          raise RuntimeError, "something went wrong"
+        end
+      end
+      assert_equal "something went wrong", e.message
+    end
+  end
+
   private
 
   def tokenize(*parts)

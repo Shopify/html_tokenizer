@@ -16,23 +16,25 @@ enum tokenizer_context {
   TOKENIZER_ATTRIBUTE_STRING,
 };
 
-extern VALUE text_symbol,
-  comment_start_symbol,
-  comment_end_symbol,
-  tag_start_symbol,
-  tag_name_symbol,
-  cdata_start_symbol,
-  cdata_end_symbol,
-  whitespace_symbol,
-  attribute_name_symbol,
-  solidus_symbol,
-  equal_symbol,
-  tag_end_symbol,
-  attribute_value_start_symbol,
-  attribute_value_end_symbol,
-  attribute_unquoted_value_symbol,
-  malformed_symbol
-;
+enum token_type {
+  TOKEN_NONE = 0,
+  TOKEN_TEXT,
+  TOKEN_WHITESPACE,
+  TOKEN_COMMENT_START,
+  TOKEN_COMMENT_END,
+  TOKEN_TAG_START,
+  TOKEN_TAG_NAME,
+  TOKEN_TAG_END,
+  TOKEN_ATTRIBUTE_NAME,
+  TOKEN_ATTRIBUTE_VALUE_START,
+  TOKEN_ATTRIBUTE_VALUE_END,
+  TOKEN_ATTRIBUTE_UNQUOTED_VALUE,
+  TOKEN_CDATA_START,
+  TOKEN_CDATA_END,
+  TOKEN_SOLIDUS,
+  TOKEN_EQUAL,
+  TOKEN_MALFORMED,
+};
 
 struct scan_t {
   char *string;
@@ -46,7 +48,7 @@ struct tokenizer_t
   uint32_t current_context;
 
   void *callback_data;
-  void (*f_callback)(struct tokenizer_t *tk, VALUE sym, long unsigned int length, void *data);
+  void (*f_callback)(struct tokenizer_t *tk, enum token_type type, long unsigned int length, void *data);
 
   char attribute_value_start;
   int found_attribute;
@@ -54,7 +56,7 @@ struct tokenizer_t
   char *current_tag;
 
   int is_closing_tag;
-  VALUE last_token;
+  enum token_type last_token;
 
   struct scan_t scan;
 };
@@ -63,6 +65,7 @@ struct tokenizer_t
 void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer);
 void tokenizer_init(struct tokenizer_t *tk);
 void tokenizer_scan_all(struct tokenizer_t *tk);
+VALUE token_type_to_symbol(enum token_type type);
 
 extern const rb_data_type_t tokenizer_data_type;
 #define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct tokenizer_t, &tokenizer_data_type, sval)

@@ -3,16 +3,6 @@
 
 static VALUE cParser = Qnil;
 
-static VALUE
-  none_symbol,
-  tag_symbol,
-  attribute_symbol,
-  attribute_value_symbol,
-  rawtext_symbol,
-  comment_symbol,
-  cdata_symbol
-;
-
 static void parser_mark(void *ptr)
 {}
 
@@ -53,7 +43,7 @@ static VALUE parser_allocate(VALUE klass)
 
 static inline void parser_append_ref(struct token_reference_t *dest, struct token_reference_t *src)
 {
-  if(dest->type == Qnil || dest->type != src->type || (dest->start + dest->length) != src->start) {
+  if(dest->type == TOKEN_NONE || dest->type != src->type || (dest->start + dest->length) != src->start) {
     dest->type = src->type;
     dest->start = src->start;
     dest->length = src->length;
@@ -66,23 +56,23 @@ static inline void parser_append_ref(struct token_reference_t *dest, struct toke
 
 static void parse_none(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_start_symbol) {
+  if(ref->type == TOKEN_TAG_START) {
     parser->context = PARSER_TAG_NAME;
-    parser->tag.name.type = Qnil;
+    parser->tag.name.type = TOKEN_NONE;
   }
-  else if(ref->type == comment_start_symbol) {
+  else if(ref->type == TOKEN_COMMENT_START) {
     parser->context = PARSER_COMMENT;
-    parser->comment.text.type = Qnil;
+    parser->comment.text.type = TOKEN_NONE;
   }
-  else if(ref->type == cdata_start_symbol) {
+  else if(ref->type == TOKEN_CDATA_START) {
     parser->context = PARSER_CDATA;
-    parser->cdata.text.type = Qnil;
+    parser->cdata.text.type = TOKEN_NONE;
   }
 }
 
 static void parse_rawtext(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == text_symbol) {
+  if(ref->type == TOKEN_TEXT) {
     parser_append_ref(&parser->rawtext.text, ref);
   }
   else {
@@ -94,10 +84,10 @@ static void parse_rawtext(struct parser_t *parser, struct token_reference_t *ref
 
 static void parse_comment(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == comment_end_symbol) {
+  if(ref->type == TOKEN_COMMENT_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == text_symbol) {
+  else if(ref->type == TOKEN_TEXT) {
     parser_append_ref(&parser->comment.text, ref);
   }
   return;
@@ -105,10 +95,10 @@ static void parse_comment(struct parser_t *parser, struct token_reference_t *ref
 
 static void parse_cdata(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == cdata_end_symbol) {
+  if(ref->type == TOKEN_CDATA_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == text_symbol) {
+  else if(ref->type == TOKEN_TEXT) {
     parser_append_ref(&parser->cdata.text, ref);
   }
   return;
@@ -116,16 +106,16 @@ static void parse_cdata(struct parser_t *parser, struct token_reference_t *ref)
 
 static void parse_tag_name(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_end_symbol) {
+  if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == tag_name_symbol) {
+  else if(ref->type == TOKEN_TAG_NAME) {
     parser_append_ref(&parser->tag.name, ref);
   }
-  else if(ref->type == whitespace_symbol) {
+  else if(ref->type == TOKEN_WHITESPACE) {
     parser->context = PARSER_TAG;
   }
-  else if(ref->type == solidus_symbol) {
+  else if(ref->type == TOKEN_SOLIDUS) {
     if(parser->tk.context[parser->tk.current_context] == TOKENIZER_HTML) {
       // solidus with opening tag, still expecting a tag name
     } else {
@@ -138,21 +128,21 @@ static void parse_tag_name(struct parser_t *parser, struct token_reference_t *re
 
 static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_end_symbol) {
+  if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == tag_name_symbol) {
+  else if(ref->type == TOKEN_TAG_NAME) {
     parser_append_ref(&parser->tag.name, ref);
   }
-  else if(ref->type == attribute_name_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser->context = PARSER_ATTRIBUTE;
     parser_append_ref(&parser->attribute.name, ref);
-    parser->attribute.value.type = Qnil;
+    parser->attribute.value.type = TOKEN_NONE;
   }
-  else if(ref->type == attribute_value_start_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser->context = PARSER_ATTRIBUTE_VALUE;
-    parser->attribute.name.type = Qnil;
-    parser->attribute.value.type = Qnil;
+    parser->attribute.name.type = TOKEN_NONE;
+    parser->attribute.value.type = TOKEN_NONE;
     parser->attribute.is_quoted = 1;
   }
   return;
@@ -160,17 +150,17 @@ static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
 
 static void parse_attribute(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_end_symbol) {
+  if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == attribute_name_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser_append_ref(&parser->attribute.name, ref);
   }
-  else if(ref->type == attribute_value_start_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser->context = PARSER_ATTRIBUTE_VALUE;
     parser->attribute.is_quoted = 1;
   }
-  else if(ref->type == attribute_unquoted_value_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
     parser->context = PARSER_ATTRIBUTE_UNQUOTED_VALUE;
     parser_append_ref(&parser->attribute.value, ref);
     parser->attribute.is_quoted = 0;
@@ -181,23 +171,23 @@ static void parse_attribute(struct parser_t *parser, struct token_reference_t *r
 
 static void parse_attribute_value(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_end_symbol) {
+  if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == attribute_name_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser->context = PARSER_ATTRIBUTE;
     parser_append_ref(&parser->attribute.name, ref);
   }
-  else if(ref->type == attribute_value_start_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser_append_ref(&parser->attribute.value, ref);
   }
-  else if(ref->type == text_symbol) {
+  else if(ref->type == TOKEN_TEXT) {
     parser_append_ref(&parser->attribute.value, ref);
   }
-  else if(ref->type == attribute_value_end_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_VALUE_END) {
     parser->context = PARSER_TAG;
   }
-  else if(ref->type == attribute_unquoted_value_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
     parser_append_ref(&parser->attribute.value, ref);
   }
 
@@ -206,10 +196,10 @@ static void parse_attribute_value(struct parser_t *parser, struct token_referenc
 
 static void parse_attribute_unquoted_value(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == tag_end_symbol) {
+  if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == attribute_unquoted_value_symbol) {
+  else if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
     parser_append_ref(&parser->attribute.value, ref);
   }
   else {
@@ -226,10 +216,10 @@ static inline int rawtext_context(struct parser_t *parser)
       ctx == TOKENIZER_SCRIPT_DATA || ctx == TOKENIZER_PLAINTEXT);
 }
 
-static void parser_tokenize_callback(struct tokenizer_t *tk, VALUE sym, unsigned long int length, void *data)
+static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type type, unsigned long int length, void *data)
 {
   struct parser_t *parser = (struct parser_t *)data;
-  struct token_reference_t ref = { sym, tk->scan.cursor, length };
+  struct token_reference_t ref = { type, tk->scan.cursor, length };
 
   switch(parser->context)
   {
@@ -329,22 +319,20 @@ static VALUE parser_context_method(VALUE self)
 
   switch(parser->context) {
   case PARSER_NONE:
-    return rawtext_context(parser) ? rawtext_symbol : none_symbol;
+    return rawtext_context(parser) ? ID2SYM(rb_intern("rawtext")) : ID2SYM(rb_intern("none"));
   case PARSER_TAG_NAME:
-    return tag_name_symbol;
+    return ID2SYM(rb_intern("tag_name"));
   case PARSER_TAG:
-    return tag_symbol;
+    return ID2SYM(rb_intern("tag"));
   case PARSER_ATTRIBUTE:
-    return attribute_symbol;
+    return ID2SYM(rb_intern("attribute"));
   case PARSER_ATTRIBUTE_UNQUOTED_VALUE:
   case PARSER_ATTRIBUTE_VALUE:
-    return attribute_value_symbol;
+    return ID2SYM(rb_intern("attribute_value"));
   case PARSER_COMMENT:
-    return comment_symbol;
+    return ID2SYM(rb_intern("comment"));
   case PARSER_CDATA:
-    return cdata_symbol;
-  default:
-    return Qnil;
+    return ID2SYM(rb_intern("cdata"));
   }
 
   return Qnil;
@@ -352,7 +340,7 @@ static VALUE parser_context_method(VALUE self)
 
 static inline VALUE ref_to_str(struct parser_t *parser, struct token_reference_t *ref)
 {
-  if(ref->type == Qnil || parser->doc.data == NULL)
+  if(ref->type == TOKEN_NONE || parser->doc.data == NULL)
     return Qnil;
   return rb_str_new(parser->doc.data+ref->start, ref->length);
 }
@@ -420,12 +408,4 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);
   rb_define_method(cParser, "cdata_text", parser_cdata_text_method, 0);
   rb_define_method(cParser, "rawtext_text", parser_rawtext_text_method, 0);
-
-  none_symbol = ID2SYM(rb_intern("none"));
-  tag_symbol = ID2SYM(rb_intern("tag"));
-  attribute_symbol = ID2SYM(rb_intern("attribute"));
-  attribute_value_symbol = ID2SYM(rb_intern("attribute_value"));
-  rawtext_symbol = ID2SYM(rb_intern("rawtext"));
-  comment_symbol = ID2SYM(rb_intern("comment"));
-  cdata_symbol = ID2SYM(rb_intern("cdata"));
 }

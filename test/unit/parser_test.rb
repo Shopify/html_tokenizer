@@ -237,7 +237,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("<plaintext>")
     assert_equal :rawtext, @parser.context
     assert_equal "plaintext", @parser.tag_name
-    assert_equal "", @parser.rawtext_text
+    assert_equal nil, @parser.rawtext_text
 
     parse("some", "<text")
     assert_equal :rawtext, @parser.context
@@ -257,7 +257,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
       parse("<#{name}>")
       assert_equal :rawtext, @parser.context
       assert_equal name, @parser.tag_name
-      assert_equal "", @parser.rawtext_text
+      assert_equal nil, @parser.rawtext_text
 
       parse("some", "<text")
       assert_equal :rawtext, @parser.context

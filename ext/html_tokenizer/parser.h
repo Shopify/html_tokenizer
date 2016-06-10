@@ -18,7 +18,7 @@ struct parser_document_t {
 };
 
 struct token_reference_t {
-  VALUE type;
+  enum token_type type;
   long unsigned int start;
   long unsigned int length;
 };

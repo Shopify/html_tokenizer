@@ -3,24 +3,6 @@
 
 static VALUE cTokenizer = Qnil;
 
-VALUE text_symbol,
-  comment_start_symbol,
-  comment_end_symbol,
-  tag_start_symbol,
-  tag_name_symbol,
-  cdata_start_symbol,
-  cdata_end_symbol,
-  whitespace_symbol,
-  attribute_name_symbol,
-  solidus_symbol,
-  equal_symbol,
-  tag_end_symbol,
-  attribute_value_start_symbol,
-  attribute_value_end_symbol,
-  attribute_unquoted_value_symbol,
-  malformed_symbol
-;
-
 static void tokenizer_mark(void *ptr)
 {}
 
@@ -78,23 +60,63 @@ void tokenizer_init(struct tokenizer_t *tk)
   tk->found_attribute = 0;
   tk->current_tag = NULL;
   tk->is_closing_tag = 0;
-  tk->last_token = Qnil;
+  tk->last_token = TOKEN_NONE;
   tk->callback_data = NULL;
   tk->f_callback = NULL;
 
   return;
 }
 
-static void tokenizer_yield_tag(struct tokenizer_t *tk, VALUE sym, long unsigned int length, void *data)
+VALUE token_type_to_symbol(enum token_type type)
 {
-  tk->last_token = sym;
-  rb_yield_values(3, sym, INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
+  switch(type) {
+  case TOKEN_NONE:
+    return ID2SYM(rb_intern("none"));
+  case TOKEN_TEXT:
+    return ID2SYM(rb_intern("text"));
+  case TOKEN_WHITESPACE:
+    return ID2SYM(rb_intern("whitespace"));
+  case TOKEN_COMMENT_START:
+    return ID2SYM(rb_intern("comment_start"));
+  case TOKEN_COMMENT_END:
+    return ID2SYM(rb_intern("comment_end"));
+  case TOKEN_TAG_NAME:
+    return ID2SYM(rb_intern("tag_name"));
+  case TOKEN_TAG_START:
+    return ID2SYM(rb_intern("tag_start"));
+  case TOKEN_TAG_END:
+    return ID2SYM(rb_intern("tag_end"));
+  case TOKEN_ATTRIBUTE_NAME:
+    return ID2SYM(rb_intern("attribute_name"));
+  case TOKEN_ATTRIBUTE_VALUE_START:
+    return ID2SYM(rb_intern("attribute_value_start"));
+  case TOKEN_ATTRIBUTE_VALUE_END:
+    return ID2SYM(rb_intern("attribute_value_end"));
+  case TOKEN_ATTRIBUTE_UNQUOTED_VALUE:
+    return ID2SYM(rb_intern("attribute_unquoted_value"));
+  case TOKEN_CDATA_START:
+    return ID2SYM(rb_intern("cdata_start"));
+  case TOKEN_CDATA_END:
+    return ID2SYM(rb_intern("cdata_end"));
+  case TOKEN_SOLIDUS:
+    return ID2SYM(rb_intern("solidus"));
+  case TOKEN_EQUAL:
+    return ID2SYM(rb_intern("equal"));
+  case TOKEN_MALFORMED:
+    return ID2SYM(rb_intern("malformed"));
+  }
 }
 
-static void tokenizer_callback(struct tokenizer_t *tk, VALUE sym, long unsigned int length)
+static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, long unsigned int length, void *data)
+{
+  tk->last_token = type;
+  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
+}
+
+static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, long unsigned int length)
 {
   if(tk->f_callback)
-    tk->f_callback(tk, sym, length, tk->callback_data);
+    tk->f_callback(tk, type, length, tk->callback_data);
   tk->scan.cursor += length;
 }
 
@@ -300,25 +322,25 @@ static int scan_html(struct tokenizer_t *tk)
   long unsigned int length = 0;
 
   if(is_comment_start(&tk->scan)) {
-    tokenizer_callback(tk, comment_start_symbol, 4);
+    tokenizer_callback(tk, TOKEN_COMMENT_START, 4);
     push_context(tk, TOKENIZER_COMMENT);
     return 1;
   }
   else if(is_doctype(&tk->scan)) {
-    tokenizer_callback(tk, tag_start_symbol, 9);
+    tokenizer_callback(tk, TOKEN_TAG_START, 9);
     push_context(tk, TOKENIZER_ATTRIBUTES);
     return 1;
   }
   else if(is_cdata_start(&tk->scan)) {
-    tokenizer_callback(tk, cdata_start_symbol, 9);
+    tokenizer_callback(tk, TOKEN_CDATA_START, 9);
     push_context(tk, TOKENIZER_CDATA);
     return 1;
   }
   else if(is_char(&tk->scan, '<')) {
-    tokenizer_callback(tk, tag_start_symbol, 1);
+    tokenizer_callback(tk, TOKEN_TAG_START, 1);
     if(is_char(&tk->scan, '/')) {
       tk->is_closing_tag = 1;
-      tokenizer_callback(tk, solidus_symbol, 1);
+      tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
     }
     else {
       tk->is_closing_tag = 0;
@@ -329,7 +351,7 @@ static int scan_html(struct tokenizer_t *tk)
     return 1;
   }
   else if(is_char(&tk->scan, '>')) {
-    tokenizer_callback(tk, tag_end_symbol, 1);
+    tokenizer_callback(tk, TOKEN_TAG_END, 1);
 
     if(tk->current_tag && !tk->is_closing_tag) {
       if(!strcasecmp("title", tk->current_tag) ||
@@ -352,7 +374,7 @@ static int scan_html(struct tokenizer_t *tk)
     return 1;
   }
   else if(is_text(&tk->scan, &length)) {
-    tokenizer_callback(tk, text_symbol, length);
+    tokenizer_callback(tk, TOKEN_TEXT, length);
     return 1;
   }
   return 0;
@@ -370,16 +392,16 @@ static int scan_open_tag(struct tokenizer_t *tk)
 
     strncat(tk->current_tag, tag_name, tag_name_length);
 
-    tokenizer_callback(tk, tag_name_symbol, tag_name_length);
+    tokenizer_callback(tk, TOKEN_TAG_NAME, tag_name_length);
     return 1;
   }
   else if(is_char(&tk->scan, '/')) {
-    tokenizer_callback(tk, solidus_symbol, 1);
+    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
     push_context(tk, TOKENIZER_ATTRIBUTES);
     return 1;
   }
   else if(is_whitespace(&tk->scan, &length)) {
-    tokenizer_callback(tk, whitespace_symbol, length);
+    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
     push_context(tk, TOKENIZER_ATTRIBUTES);
     return 1;
   }
@@ -395,17 +417,17 @@ static int scan_attributes(struct tokenizer_t *tk)
   unsigned long int length = 0;
 
   if(is_whitespace(&tk->scan, &length)) {
-    tokenizer_callback(tk, whitespace_symbol, length);
+    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
     return 1;
   }
   else if(is_char(&tk->scan, '=')) {
     tk->found_attribute = 0;
-    tokenizer_callback(tk, equal_symbol, 1);
+    tokenizer_callback(tk, TOKEN_EQUAL, 1);
     push_context(tk, TOKENIZER_ATTRIBUTE_VALUE);
     return 1;
   }
   else if(is_char(&tk->scan, '/')) {
-    tokenizer_callback(tk, solidus_symbol, 1);
+    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
     return 1;
   }
   else if(is_char(&tk->scan, '>')) {
@@ -414,12 +436,12 @@ static int scan_attributes(struct tokenizer_t *tk)
   }
   else if(is_char(&tk->scan, '\'') || is_char(&tk->scan, '"')) {
     tk->attribute_value_start = tk->scan.string[tk->scan.cursor];
-    tokenizer_callback(tk, attribute_value_start_symbol, 1);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_START, 1);
     push_context(tk, TOKENIZER_ATTRIBUTE_STRING);
     return 1;
   }
   else if(is_attribute_name(&tk->scan, &length)) {
-    tokenizer_callback(tk, attribute_name_symbol, length);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_NAME, length);
     push_context(tk, TOKENIZER_ATTRIBUTE_NAME);
     return 1;
   }
@@ -431,7 +453,7 @@ static int scan_attribute_name(struct tokenizer_t *tk)
   unsigned long int length = 0;
 
   if(is_attribute_name(&tk->scan, &length)) {
-    tokenizer_callback(tk, attribute_name_symbol, length);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_NAME, length);
     return 1;
   }
   else if(is_whitespace(&tk->scan, &length) || is_char(&tk->scan, '/') ||
@@ -446,7 +468,7 @@ static int scan_attribute_value(struct tokenizer_t *tk)
 {
   unsigned long int length = 0;
 
-  if(tk->last_token == attribute_value_end_symbol) {
+  if(tk->last_token == TOKEN_ATTRIBUTE_VALUE_END) {
     pop_context(tk);
     return 1;
   }
@@ -455,20 +477,20 @@ static int scan_attribute_value(struct tokenizer_t *tk)
     return 1;
   }
   else if(is_whitespace(&tk->scan, &length)) {
-    tokenizer_callback(tk, whitespace_symbol, length);
+    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
     if(tk->found_attribute)
       pop_context(tk);
     return 1;
   }
   else if(is_char(&tk->scan, '\'') || is_char(&tk->scan, '"')) {
     tk->attribute_value_start = tk->scan.string[tk->scan.cursor];
-    tokenizer_callback(tk, attribute_value_start_symbol, 1);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_START, 1);
     push_context(tk, TOKENIZER_ATTRIBUTE_STRING);
     tk->found_attribute = 1;
     return 1;
   }
   else if(is_unquoted_value(&tk->scan, &length)) {
-    tokenizer_callback(tk, attribute_unquoted_value_symbol, length);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_UNQUOTED_VALUE, length);
     tk->found_attribute = 1;
     return 1;
   }
@@ -480,12 +502,12 @@ static int scan_attribute_string(struct tokenizer_t *tk)
   unsigned long int length = 0;
 
   if(is_char(&tk->scan, tk->attribute_value_start)) {
-    tokenizer_callback(tk, attribute_value_end_symbol, 1);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_END, 1);
     pop_context(tk);
     return 1;
   }
   else if(is_attribute_string(&tk->scan, &length, tk->attribute_value_start)) {
-    tokenizer_callback(tk, text_symbol, length);
+    tokenizer_callback(tk, TOKEN_TEXT, length);
     return 1;
   }
   return 0;
@@ -497,13 +519,13 @@ static int scan_comment(struct tokenizer_t *tk)
   const char *comment_end = NULL;
 
   if(is_comment_end(&tk->scan, &length, &comment_end)) {
-    tokenizer_callback(tk, text_symbol, length);
+    tokenizer_callback(tk, TOKEN_TEXT, length);
     if(comment_end)
-      tokenizer_callback(tk, comment_end_symbol, 3);
+      tokenizer_callback(tk, TOKEN_COMMENT_END, 3);
     return 1;
   }
   else {
-    tokenizer_callback(tk, text_symbol, length_remaining(&tk->scan));
+    tokenizer_callback(tk, TOKEN_TEXT, length_remaining(&tk->scan));
     return 1;
   }
   return 0;
@@ -515,13 +537,13 @@ static int scan_cdata(struct tokenizer_t *tk)
   const char *cdata_end = NULL;
 
   if(is_cdata_end(&tk->scan, &length, &cdata_end)) {
-    tokenizer_callback(tk, text_symbol, length);
+    tokenizer_callback(tk, TOKEN_TEXT, length);
     if(cdata_end)
-      tokenizer_callback(tk, cdata_end_symbol, 3);
+      tokenizer_callback(tk, TOKEN_CDATA_END, 3);
     return 1;
   }
   else {
-    tokenizer_callback(tk, text_symbol, length_remaining(&tk->scan));
+    tokenizer_callback(tk, TOKEN_TEXT, length_remaining(&tk->scan));
     return 1;
   }
   return 0;
@@ -537,16 +559,16 @@ static int scan_rawtext(struct tokenizer_t *tk)
     if(closing_tag && tk->current_tag && !strncasecmp((const char *)tag_name, tk->current_tag, tag_name_length)) {
       pop_context(tk);
     } else {
-      tokenizer_callback(tk, text_symbol, length);
+      tokenizer_callback(tk, TOKEN_TEXT, length);
     }
     return 1;
   }
   else if(is_text(&tk->scan, &length)) {
-    tokenizer_callback(tk, text_symbol, length);
+    tokenizer_callback(tk, TOKEN_TEXT, length);
     return 1;
   }
   else {
-    tokenizer_callback(tk, text_symbol, length_remaining(&tk->scan));
+    tokenizer_callback(tk, TOKEN_TEXT, length_remaining(&tk->scan));
     return 1;
   }
   return 0;
@@ -554,7 +576,7 @@ static int scan_rawtext(struct tokenizer_t *tk)
 
 static int scan_plaintext(struct tokenizer_t *tk)
 {
-  tokenizer_callback(tk, text_symbol, length_remaining(&tk->scan));
+  tokenizer_callback(tk, TOKEN_TEXT, length_remaining(&tk->scan));
   return 1;
 }
 
@@ -595,7 +617,7 @@ void tokenizer_scan_all(struct tokenizer_t *tk)
 {
   while(!eos(&tk->scan) && scan_once(tk)) {}
   if(!eos(&tk->scan)) {
-    tokenizer_callback(tk, malformed_symbol, length_remaining(&tk->scan));
+    tokenizer_callback(tk, TOKEN_MALFORMED, length_remaining(&tk->scan));
   }
   return;
 }
@@ -618,9 +640,6 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   REALLOC_N(tk->scan.string, char, tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
 
-  if(tk->current_tag)
-    tk->current_tag[0] = '\0';
-
   tokenizer_scan_all(tk);
 
   xfree(tk->scan.string);
@@ -635,21 +654,4 @@ void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer)
   rb_define_alloc_func(cTokenizer, tokenizer_allocate);
   rb_define_method(cTokenizer, "initialize", tokenizer_initialize_method, 0);
   rb_define_method(cTokenizer, "tokenize", tokenizer_tokenize_method, 1);
-
-  text_symbol = ID2SYM(rb_intern("text"));
-  comment_start_symbol = ID2SYM(rb_intern("comment_start"));
-  comment_end_symbol = ID2SYM(rb_intern("comment_end"));
-  tag_start_symbol = ID2SYM(rb_intern("tag_start"));
-  tag_name_symbol = ID2SYM(rb_intern("tag_name"));
-  cdata_start_symbol = ID2SYM(rb_intern("cdata_start"));
-  cdata_end_symbol = ID2SYM(rb_intern("cdata_end"));
-  whitespace_symbol = ID2SYM(rb_intern("whitespace"));
-  attribute_name_symbol = ID2SYM(rb_intern("attribute_name"));
-  solidus_symbol = ID2SYM(rb_intern("solidus"));
-  equal_symbol = ID2SYM(rb_intern("equal"));
-  tag_end_symbol = ID2SYM(rb_intern("tag_end"));
-  attribute_value_start_symbol = ID2SYM(rb_intern("attribute_value_start"));
-  attribute_value_end_symbol = ID2SYM(rb_intern("attribute_value_end"));
-  attribute_unquoted_value_symbol = ID2SYM(rb_intern("attribute_unquoted_value"));
-  malformed_symbol = ID2SYM(rb_intern("malformed"));
 }

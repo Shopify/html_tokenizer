@@ -632,6 +632,9 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
 
   scan_all(tk);
 
+  xfree(tk->scan.string);
+  tk->scan.string = NULL;
+
   return Qtrue;
 }
 

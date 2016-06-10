@@ -597,19 +597,24 @@ void scan_all(struct tokenizer_t *tk)
 static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
 {
   struct tokenizer_t *tk = NULL;
+  char *c_source;
+
+  if(NIL_P(source))
+    return Qnil;
 
   Check_Type(source, T_STRING);
   Tokenizer_Get_Struct(self, tk);
 
+  c_source = StringValueCStr(source);
   tk->scan.cursor = 0;
-  tk->scan.length = RSTRING_LEN(source);
+  tk->scan.length = strlen(c_source);
 
   tk->scan.string = calloc(1, tk->scan.length+1);
-  strncpy(tk->scan.string, RSTRING_PTR(source), tk->scan.length);
+  strncpy(tk->scan.string, c_source, tk->scan.length);
 
   scan_all(tk);
 
-  return Qnil;
+  return Qtrue;
 }
 
 void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer)

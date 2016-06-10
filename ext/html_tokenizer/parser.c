@@ -282,7 +282,7 @@ static int parser_document_append(struct parser_t *parser, const char *string, u
   char *tmp;
 
   tmp = realloc(parser->doc.data, parser->doc.length + length + 1);
-   if(!tmp)
+  if(!tmp)
     return 0;
 
   parser->doc.data = tmp;
@@ -297,11 +297,14 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   char *string = NULL;
   long unsigned int length = 0;
 
+  if(NIL_P(source))
+    return Qnil;
+
   Check_Type(source, T_STRING);
   Parser_Get_Struct(self, parser);
 
-  string = RSTRING_PTR(source);
-  length = RSTRING_LEN(source);
+  string = StringValueCStr(source);
+  length = strlen(string);
 
   parser->tk.scan.cursor = parser->doc.length;
 
@@ -315,7 +318,7 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
 
   scan_all(&parser->tk);
 
-  return Qnil;
+  return Qtrue;
 }
 
 static VALUE parser_context_method(VALUE self)

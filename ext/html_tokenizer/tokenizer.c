@@ -70,6 +70,10 @@ void tokenizer_init(struct tokenizer_t *tk)
   tk->current_context = 0;
   tk->context[0] = TOKENIZER_HTML;
 
+  tk->scan.string = NULL;
+  tk->scan.cursor = 0;
+  tk->scan.length = 0;
+
   tk->attribute_value_start = 0;
   tk->found_attribute = 0;
   tk->current_tag = NULL;
@@ -623,7 +627,7 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
 
-  tk->scan.string = ALLOC_N(char, tk->scan.length+1);
+  tk->scan.string = REALLOC_N(tk->scan.string, char, tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
 
   scan_all(tk);

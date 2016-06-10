@@ -285,15 +285,7 @@ static VALUE parser_initialize_method(VALUE self)
 
 static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
-  char *tmp;
-
-  tmp = REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
-  if(!tmp) {
-    parser->doc.data = NULL;
-    return 0;
-  }
-
-  parser->doc.data = tmp;
+  REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
   strcpy(parser->doc.data+parser->doc.length, string);
   parser->doc.length += length;
   return 1;

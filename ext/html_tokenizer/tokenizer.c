@@ -324,12 +324,13 @@ static int scan_html(struct tokenizer_t *tk)
       tk->is_closing_tag = 0;
     }
     if(tk->current_tag)
-      *tk->current_tag = '\0';
+      tk->current_tag[0] = '\0';
     push_context(tk, TOKENIZER_OPEN_TAG);
     return 1;
   }
   else if(is_char(&tk->scan, '>')) {
     tokenizer_callback(tk, tag_end_symbol, 1);
+
     if(tk->current_tag && !tk->is_closing_tag) {
       if(!strcasecmp("title", tk->current_tag) ||
           !strcasecmp("textarea", tk->current_tag)) {
@@ -363,26 +364,13 @@ static int scan_open_tag(struct tokenizer_t *tk)
   const char *tag_name = NULL;
 
   if(is_tag_name(&tk->scan, &tag_name, &tag_name_length)) {
-    tokenizer_callback(tk, tag_name_symbol, tag_name_length);
-
-    if(tk->current_tag) {
-      char *tmp;
-      length = strlen(tk->current_tag) + strlen(tag_name) + 1;
-      tmp = REALLOC_N(tk->current_tag, char, length);
-      if(!tmp) {
-        tk->current_tag = NULL;
-        return 0;
-      }
-      tk->current_tag = tmp;
-    } else {
-      length = strlen(tag_name) + 1;
-      tk->current_tag = ALLOC_N(char, length);
-      if(!tk->current_tag)
-        return 0;
-      memset(tk->current_tag, 0, length);
-    }
+    length = (tk->current_tag ? strlen(tk->current_tag) : 0);
+    REALLOC_N(tk->current_tag, char, length + tag_name_length + 1);
+    tk->current_tag[length] = 0;
 
     strncat(tk->current_tag, tag_name, tag_name_length);
+
+    tokenizer_callback(tk, tag_name_symbol, tag_name_length);
     return 1;
   }
   else if(is_char(&tk->scan, '/')) {
@@ -411,8 +399,8 @@ static int scan_attributes(struct tokenizer_t *tk)
     return 1;
   }
   else if(is_char(&tk->scan, '=')) {
-    tokenizer_callback(tk, equal_symbol, 1);
     tk->found_attribute = 0;
+    tokenizer_callback(tk, equal_symbol, 1);
     push_context(tk, TOKENIZER_ATTRIBUTE_VALUE);
     return 1;
   }
@@ -546,7 +534,7 @@ static int scan_rawtext(struct tokenizer_t *tk)
   int closing_tag = 0;
 
   if(is_tag_start(&tk->scan, &length, &closing_tag, &tag_name, &tag_name_length)) {
-    if(closing_tag && !strncasecmp((const char *)tag_name, tk->current_tag, tag_name_length)) {
+    if(closing_tag && tk->current_tag && !strncasecmp((const char *)tag_name, tk->current_tag, tag_name_length)) {
       pop_context(tk);
     } else {
       tokenizer_callback(tk, text_symbol, length);
@@ -627,8 +615,11 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
 
-  tk->scan.string = REALLOC_N(tk->scan.string, char, tk->scan.length+1);
+  REALLOC_N(tk->scan.string, char, tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
+
+  if(tk->current_tag)
+    tk->current_tag[0] = '\0';
 
   scan_all(tk);
 

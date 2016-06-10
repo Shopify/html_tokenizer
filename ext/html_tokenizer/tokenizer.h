@@ -35,7 +35,7 @@ extern VALUE text_symbol,
 ;
 
 struct scan_t {
-  const char *string;
+  char *string;
   long unsigned int cursor;
   long unsigned int length;
 };

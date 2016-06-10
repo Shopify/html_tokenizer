@@ -601,9 +601,11 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   Check_Type(source, T_STRING);
   Tokenizer_Get_Struct(self, tk);
 
-  tk->scan.string = RSTRING_PTR(source);
   tk->scan.cursor = 0;
   tk->scan.length = RSTRING_LEN(source);
+
+  tk->scan.string = calloc(1, tk->scan.length+1);
+  strncpy(tk->scan.string, RSTRING_PTR(source), tk->scan.length);
 
   scan_all(tk);
 

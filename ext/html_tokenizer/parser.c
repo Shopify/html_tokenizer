@@ -220,7 +220,7 @@ static inline int rawtext_context(struct parser_t *parser)
       ctx == TOKENIZER_SCRIPT_DATA || ctx == TOKENIZER_PLAINTEXT);
 }
 
-static void parser_tokenize_callback(struct tokenizer_t *tk, VALUE sym, uint32_t length, void *data)
+static void parser_tokenize_callback(struct tokenizer_t *tk, VALUE sym, unsigned long int length, void *data)
 {
   struct parser_t *parser = (struct parser_t *)data;
   struct token_reference_t ref = { sym, tk->scan.cursor, length };
@@ -277,7 +277,7 @@ static VALUE parser_initialize_method(VALUE self)
   return Qnil;
 }
 
-static int parser_document_append(struct parser_t *parser, const char *string, uint32_t length)
+static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
   char *tmp;
 
@@ -295,7 +295,7 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
 {
   struct parser_t *parser = NULL;
   char *string = NULL;
-  uint32_t length = 0;
+  long unsigned int length = 0;
 
   Check_Type(source, T_STRING);
   Parser_Get_Struct(self, parser);

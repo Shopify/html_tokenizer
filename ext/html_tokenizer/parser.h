@@ -13,14 +13,14 @@ enum parser_context {
 };
 
 struct parser_document_t {
-  uint32_t length;
+  long unsigned int length;
   char *data;
 };
 
 struct token_reference_t {
   VALUE type;
-  uint32_t start;
-  uint32_t length;
+  long unsigned int start;
+  long unsigned int length;
 };
 
 struct parser_tag_t {

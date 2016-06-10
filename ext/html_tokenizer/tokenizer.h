@@ -36,8 +36,8 @@ extern VALUE text_symbol,
 
 struct scan_t {
   const char *string;
-  uint32_t cursor;
-  uint32_t length;
+  long unsigned int cursor;
+  long unsigned int length;
 };
 
 struct tokenizer_t
@@ -46,7 +46,7 @@ struct tokenizer_t
   uint32_t current_context;
 
   void *callback_data;
-  void (*f_callback)(struct tokenizer_t *tk, VALUE sym, uint32_t length, void *data);
+  void (*f_callback)(struct tokenizer_t *tk, VALUE sym, long unsigned int length, void *data);
 
   char attribute_value_start;
   int found_attribute;

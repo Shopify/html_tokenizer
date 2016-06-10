@@ -48,7 +48,7 @@ const rb_data_type_t tokenizer_data_type = {
 static VALUE tokenizer_allocate(VALUE klass)
 {
   VALUE obj;
-  struct tokenizer_t *tokenizer;
+  struct tokenizer_t *tokenizer = NULL;
 
   obj = TypedData_Make_Struct(klass, struct tokenizer_t, &tokenizer_data_type, tokenizer);
 
@@ -73,13 +73,13 @@ void tokenizer_init(struct tokenizer_t *tk)
   return;
 }
 
-static void tokenizer_yield_tag(struct tokenizer_t *tk, VALUE sym, uint32_t length, void *data)
+static void tokenizer_yield_tag(struct tokenizer_t *tk, VALUE sym, long unsigned int length, void *data)
 {
   tk->last_token = sym;
   rb_yield_values(3, sym, INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
 }
 
-static void tokenizer_callback(struct tokenizer_t *tk, VALUE sym, uint32_t length)
+static void tokenizer_callback(struct tokenizer_t *tk, VALUE sym, long unsigned int length)
 {
   if(tk->f_callback)
     tk->f_callback(tk, sym, length, tk->callback_data);
@@ -102,7 +102,7 @@ static inline int eos(struct scan_t *scan)
   return scan->cursor >= scan->length;
 }
 
-static inline int length_remaining(struct scan_t *scan)
+static inline long unsigned int length_remaining(struct scan_t *scan)
 {
   return scan->length - scan->cursor;
 }
@@ -117,9 +117,9 @@ static inline void pop_context(struct tokenizer_t *tk)
   tk->context[tk->current_context--] = TOKENIZER_NONE;
 }
 
-static int is_text(struct scan_t *scan, uint32_t *length)
+static int is_text(struct scan_t *scan, long unsigned int *length)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
@@ -157,10 +157,10 @@ static inline int is_alnum(const char c)
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
 
-static int is_tag_start(struct scan_t *scan, uint32_t *length,
-  int *closing_tag, const char **tag_name, uint32_t *tag_name_length)
+static int is_tag_start(struct scan_t *scan, long unsigned int *length,
+  int *closing_tag, const char **tag_name, long unsigned int *tag_name_length)
 {
-  uint32_t i, start;
+  long unsigned int i, start;
 
   if(scan->string[scan->cursor] != '<')
     return 0;
@@ -187,7 +187,7 @@ static int is_tag_start(struct scan_t *scan, uint32_t *length,
 
 static int is_tag_name(struct scan_t *scan, const char **tag_name, uint32_t *tag_name_length)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *tag_name_length = 0;
   *tag_name = &scan->string[scan->cursor];
@@ -202,7 +202,7 @@ static int is_tag_name(struct scan_t *scan, const char **tag_name, uint32_t *tag
 }
 static int is_whitespace(struct scan_t *scan, uint32_t *length)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
@@ -215,7 +215,7 @@ static int is_whitespace(struct scan_t *scan, uint32_t *length)
 
 static int is_attribute_name(struct scan_t *scan, uint32_t *length)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
@@ -229,7 +229,7 @@ static int is_attribute_name(struct scan_t *scan, uint32_t *length)
 
 static int is_unquoted_value(struct scan_t *scan, uint32_t *length)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
@@ -243,7 +243,7 @@ static int is_unquoted_value(struct scan_t *scan, uint32_t *length)
 
 static int is_attribute_string(struct scan_t *scan, uint32_t *length, const char attribute_value_start)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < scan->length; i++, (*length)++) {
@@ -255,7 +255,7 @@ static int is_attribute_string(struct scan_t *scan, uint32_t *length, const char
 
 static int is_comment_end(struct scan_t *scan, uint32_t *length, const char **end)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < (scan->length - 2); i++, (*length)++) {
@@ -270,7 +270,7 @@ static int is_comment_end(struct scan_t *scan, uint32_t *length, const char **en
 
 static int is_cdata_end(struct scan_t *scan, uint32_t *length, const char **end)
 {
-  uint32_t i;
+  long unsigned int i;
 
   *length = 0;
   for(i = scan->cursor;i < (scan->length - 2); i++, (*length)++) {
@@ -285,7 +285,7 @@ static int is_cdata_end(struct scan_t *scan, uint32_t *length, const char **end)
 
 static int scan_html(struct tokenizer_t *tk)
 {
-  uint32_t length = 0;
+  long unsigned int length = 0;
 
   if(is_comment_start(&tk->scan)) {
     tokenizer_callback(tk, comment_start_symbol, 4);
@@ -523,7 +523,7 @@ static int scan_cdata(struct tokenizer_t *tk)
 
 static int scan_rawtext(struct tokenizer_t *tk)
 {
-  uint32_t length = 0, tag_name_length = 0;
+  long unsigned int length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
   int closing_tag = 0;
 

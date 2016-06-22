@@ -1,3 +1,6 @@
+*.bundle
+tmp/
+
 # Object files
 *.o
 *.ko

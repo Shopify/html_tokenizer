@@ -9,6 +9,9 @@ static void parser_mark(void *ptr)
 static void parser_free(void *ptr)
 {
   struct parser_t *parser = ptr;
+
+  printf("--- parser %p: free\n", parser);
+
   if(parser) {
     if(parser->doc.data) {
       xfree(parser->doc.data);
@@ -37,6 +40,8 @@ static VALUE parser_allocate(VALUE klass)
   struct parser_t *parser = NULL;
 
   obj = TypedData_Make_Struct(klass, struct parser_t, &html_tokenizer_parser_data_type, parser);
+
+  printf("--- parser %p: allocate\n", parser);
 
   return obj;
 }
@@ -260,6 +265,7 @@ static VALUE parser_initialize_method(VALUE self)
   struct parser_t *parser = NULL;
 
   Parser_Get_Struct(self, parser);
+  printf("--- parser %p: initialize\n", parser);
 
   memset(parser, 0, sizeof(struct parser_t));
 
@@ -300,7 +306,7 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
 
   parser->tk.scan.cursor = parser->doc.length;
 
-  printf("--- parser: append %lu (total %lu)\n", length, parser->doc.length);
+  printf("--- parser %p: append %lu (total %lu)\n", parser, length, parser->doc.length);
 
   if(!parser_document_append(parser, string, length)) {
     // error
@@ -310,11 +316,11 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   parser->tk.scan.string = parser->doc.data;
   parser->tk.scan.length = parser->doc.length;
 
-  printf("--- parser: tokenize start\n");
+  printf("--- parser %p: tokenize start\n", parser);
 
   tokenizer_scan_all(&parser->tk);
 
-  printf("--- parser: tokenize end\n");
+  printf("--- parser %p: tokenize end\n", parser);
 
   return Qtrue;
 }

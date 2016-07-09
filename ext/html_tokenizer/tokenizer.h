@@ -44,7 +44,7 @@ struct scan_t {
 
 struct tokenizer_t
 {
-  enum tokenizer_context context[100];
+  enum tokenizer_context context[1000];
   uint32_t current_context;
 
   void *callback_data;

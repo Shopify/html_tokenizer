@@ -34,7 +34,7 @@ const rb_data_type_t html_tokenizer_parser_data_type = {
 static VALUE parser_allocate(VALUE klass)
 {
   VALUE obj;
-  struct parser_t *parser;
+  struct parser_t *parser = NULL;
 
   obj = TypedData_Make_Struct(klass, struct parser_t, &html_tokenizer_parser_data_type, parser);
 
@@ -257,9 +257,11 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
 
 static VALUE parser_initialize_method(VALUE self)
 {
-  struct parser_t *parser;
+  struct parser_t *parser = NULL;
 
   Parser_Get_Struct(self, parser);
+
+  memset(parser, 0, sizeof(struct parser_t));
 
   parser->context = PARSER_NONE;
 
@@ -298,6 +300,8 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
 
   parser->tk.scan.cursor = parser->doc.length;
 
+  printf("--- parser: append %lu (total %lu)\n", length, parser->doc.length);
+
   if(!parser_document_append(parser, string, length)) {
     // error
     return Qnil;
@@ -306,7 +310,11 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   parser->tk.scan.string = parser->doc.data;
   parser->tk.scan.length = parser->doc.length;
 
+  printf("--- parser: tokenize start\n");
+
   tokenizer_scan_all(&parser->tk);
+
+  printf("--- parser: tokenize end\n");
 
   return Qtrue;
 }

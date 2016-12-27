@@ -641,16 +641,10 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   REALLOC_N(tk->scan.string, char, tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
 
-  printf("--- tokenizer: start\n");
-
   tokenizer_scan_all(tk);
-
-  printf("--- tokenizer: end\n");
 
   xfree(tk->scan.string);
   tk->scan.string = NULL;
-
-  printf("--- tokenizer: string xfree\n");
 
   return Qtrue;
 }

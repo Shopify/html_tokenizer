@@ -131,6 +131,8 @@ static VALUE tokenizer_initialize_method(VALUE self)
   struct tokenizer_t *tk = NULL;
 
   Tokenizer_Get_Struct(self, tk);
+  DBG_PRINT("tk=%p initialize", tk);
+
   tokenizer_init(tk);
   tk->f_callback = tokenizer_yield_tag;
 

@@ -265,6 +265,7 @@ static VALUE parser_initialize_method(VALUE self)
   struct parser_t *parser = NULL;
 
   Parser_Get_Struct(self, parser);
+  DBG_PRINT("parser=%p initialize", parser);
 
   memset(parser, 0, sizeof(struct parser_t));
 

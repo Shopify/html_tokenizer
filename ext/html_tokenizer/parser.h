@@ -62,5 +62,5 @@ struct parser_t
 
 void Init_html_tokenizer_parser(VALUE mHtmlTokenizer);
 
-extern const rb_data_type_t html_tokenizer_parser_data_type;
-#define Parser_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct parser_t, &html_tokenizer_parser_data_type, sval)
+extern const rb_data_type_t ht_parser_data_type;
+#define Parser_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct parser_t, &ht_parser_data_type, sval)

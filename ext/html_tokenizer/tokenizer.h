@@ -67,5 +67,5 @@ void tokenizer_init(struct tokenizer_t *tk);
 void tokenizer_scan_all(struct tokenizer_t *tk);
 VALUE token_type_to_symbol(enum token_type type);
 
-extern const rb_data_type_t tokenizer_data_type;
-#define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct tokenizer_t, &tokenizer_data_type, sval)
+extern const rb_data_type_t ht_tokenizer_data_type;
+#define Tokenizer_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct tokenizer_t, &ht_tokenizer_data_type, sval)

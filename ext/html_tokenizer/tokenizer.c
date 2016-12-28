@@ -31,8 +31,8 @@ static size_t tokenizer_memsize(const void *ptr)
   return ptr ? sizeof(struct tokenizer_t) : 0;
 }
 
-const rb_data_type_t tokenizer_data_type = {
-  "html_tokenizer_tokenizer",
+const rb_data_type_t ht_tokenizer_data_type = {
+  "ht_tokenizer_data_type",
   { tokenizer_mark, tokenizer_free, tokenizer_memsize, },
 #if defined(RUBY_TYPED_FREE_IMMEDIATELY)
   NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
@@ -44,7 +44,7 @@ static VALUE tokenizer_allocate(VALUE klass)
   VALUE obj;
   struct tokenizer_t *tokenizer = NULL;
 
-  obj = TypedData_Make_Struct(klass, struct tokenizer_t, &tokenizer_data_type, tokenizer);
+  obj = TypedData_Make_Struct(klass, struct tokenizer_t, &ht_tokenizer_data_type, tokenizer);
   DBG_PRINT("tk=%p allocate", tokenizer);
 
   memset((void *)&tokenizer->context, TOKENIZER_NONE, sizeof(struct tokenizer_t));

@@ -27,8 +27,8 @@ static size_t parser_memsize(const void *ptr)
   return ptr ? sizeof(struct parser_t) : 0;
 }
 
-const rb_data_type_t html_tokenizer_parser_data_type = {
-  "html_tokenizer_parser",
+const rb_data_type_t ht_parser_data_type = {
+  "ht_parser_data_type",
   { parser_mark, parser_free, parser_memsize, },
 #if defined(RUBY_TYPED_FREE_IMMEDIATELY)
   NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
@@ -40,7 +40,7 @@ static VALUE parser_allocate(VALUE klass)
   VALUE obj;
   struct parser_t *parser = NULL;
 
-  obj = TypedData_Make_Struct(klass, struct parser_t, &html_tokenizer_parser_data_type, parser);
+  obj = TypedData_Make_Struct(klass, struct parser_t, &ht_parser_data_type, parser);
   DBG_PRINT("parser=%p allocate", parser);
 
   return obj;

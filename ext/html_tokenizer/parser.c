@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include "html_tokenizer.h"
 #include "parser.h"
 
 static VALUE cParser = Qnil;
@@ -12,9 +13,11 @@ static void parser_free(void *ptr)
 
   if(parser) {
     if(parser->doc.data) {
+      DBG_PRINT("parser=%p xfree(parser->doc.data) %p", parser, parser->doc.data);
       xfree(parser->doc.data);
       parser->doc.data = NULL;
     }
+    DBG_PRINT("parser=%p xfree(parser)", parser);
     xfree(parser);
   }
 }
@@ -38,6 +41,7 @@ static VALUE parser_allocate(VALUE klass)
   struct parser_t *parser = NULL;
 
   obj = TypedData_Make_Struct(klass, struct parser_t, &html_tokenizer_parser_data_type, parser);
+  DBG_PRINT("parser=%p allocate", parser);
 
   return obj;
 }
@@ -278,7 +282,10 @@ static VALUE parser_initialize_method(VALUE self)
 
 static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
+  void *old = parser->doc.data;
   REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
+  DBG_PRINT("parser=%p realloc(parser->doc.data) %p -> %p length=%lu", parser, old,
+    parser->doc.data,  parser->doc.length + length + 1);
   strcpy(parser->doc.data+parser->doc.length, string);
   parser->doc.length += length;
   return 1;

@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include "html_tokenizer.h"
 #include "tokenizer.h"
 
 static VALUE cTokenizer = Qnil;
@@ -11,13 +12,16 @@ static void tokenizer_free(void *ptr)
   struct tokenizer_t *tk = ptr;
   if(tk) {
     if(tk->current_tag) {
+      DBG_PRINT("tk=%p xfree(tk->current_tag) %p", tk, tk->current_tag);
       xfree(tk->current_tag);
       tk->current_tag = NULL;
     }
     if(tk->scan.string) {
+      DBG_PRINT("tk=%p xfree(tk->scan.string) %p", tk, tk->scan.string);
       xfree(tk->scan.string);
       tk->scan.string = NULL;
     }
+    DBG_PRINT("tk=%p xfree(tk)", tk);
     xfree(tk);
   }
 }
@@ -41,6 +45,7 @@ static VALUE tokenizer_allocate(VALUE klass)
   struct tokenizer_t *tokenizer = NULL;
 
   obj = TypedData_Make_Struct(klass, struct tokenizer_t, &tokenizer_data_type, tokenizer);
+  DBG_PRINT("tk=%p allocate", tokenizer);
 
   memset((void *)&tokenizer->context, TOKENIZER_NONE, sizeof(struct tokenizer_t));
 
@@ -385,10 +390,14 @@ static int scan_open_tag(struct tokenizer_t *tk)
 {
   unsigned long int length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
+  void *old;
 
   if(is_tag_name(&tk->scan, &tag_name, &tag_name_length)) {
     length = (tk->current_tag ? strlen(tk->current_tag) : 0);
+    old = tk->current_tag;
     REALLOC_N(tk->current_tag, char, length + tag_name_length + 1);
+    DBG_PRINT("tk=%p realloc(tk->current_tag) %p -> %p length=%lu", tk, old,
+      tk->current_tag,  length + tag_name_length + 1);
     tk->current_tag[length] = 0;
 
     strncat(tk->current_tag, tag_name, tag_name_length);
@@ -627,6 +636,7 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
 {
   struct tokenizer_t *tk = NULL;
   char *c_source;
+  char *old;
 
   if(NIL_P(source))
     return Qnil;
@@ -638,11 +648,15 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
 
+  old = tk->scan.string;
   REALLOC_N(tk->scan.string, char, tk->scan.length+1);
+  DBG_PRINT("tk=%p realloc(tk->scan.string) %p -> %p length=%lu", tk, old,
+    tk->scan.string,  tk->scan.length+1);
   strncpy(tk->scan.string, c_source, tk->scan.length);
 
   tokenizer_scan_all(tk);
 
+  DBG_PRINT("tk=%p xfree(tk->scan.string) 0x%p", tk, tk->scan.string);
   xfree(tk->scan.string);
   tk->scan.string = NULL;
 

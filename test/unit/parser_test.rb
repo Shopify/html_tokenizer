@@ -290,7 +290,13 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   end
 
   def test_consecutive_scripts
-    parse("<script>foo\n</script>\n<script>bar</script> bla")
+    parse("<script>foo\n</script>\n<script>bar</script>\n bla")
+    assert_equal :none, @parser.context
+  end
+
+  def test_end_of_script_regression
+    html = "<script><!</script>"
+    parse(html)
     assert_equal :none, @parser.context
   end
 

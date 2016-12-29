@@ -288,6 +288,15 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     end
   end
 
+  def test_tokenize_end_of_script_regression
+    result = tokenize("<script><</script>")
+    assert_equal [
+      [:tag_start, "<"], [:tag_name, "script"], [:tag_end, ">"],
+      [:text, "<"],
+      [:tag_start, "<"], [:solidus, "/"], [:tag_name, "script"], [:tag_end, ">"]
+    ], result
+  end
+
   private
 
   def tokenize(*parts)

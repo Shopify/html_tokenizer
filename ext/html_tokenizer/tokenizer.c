@@ -224,7 +224,7 @@ static int is_tag_start(struct scan_t *scan, long unsigned int *length,
   }
 
   *tag_name_length = *length - start;
-  return *length > start;
+  return 1;
 }
 
 static int is_tag_name(struct scan_t *scan, const char **tag_name, unsigned long int *tag_name_length)

@@ -277,6 +277,23 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     end
   end
 
+  def test_script_rawtext
+    parse("<script>data data data")
+    assert_equal :rawtext, @parser.context
+    assert_equal "script", @parser.tag_name
+    assert_equal "data data data", @parser.rawtext_text
+    parse("</script")
+    assert_equal :tag_name, @parser.context
+    assert_equal "script", @parser.tag_name
+    parse(">")
+    assert_equal :none, @parser.context
+  end
+
+  def test_consecutive_scripts
+    parse("<script>foo\n</script>\n<script>bar</script> bla")
+    assert_equal :none, @parser.context
+  end
+
   private
 
   def parse(*parts)

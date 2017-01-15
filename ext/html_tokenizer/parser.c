@@ -143,12 +143,14 @@ static void parse_tag(struct parser_t *parser, struct token_reference_t *ref)
     parser->context = PARSER_ATTRIBUTE;
     parser_append_ref(&parser->attribute.name, ref);
     parser->attribute.value.type = TOKEN_NONE;
+    parser->attribute.name_is_complete = 0;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser->context = PARSER_ATTRIBUTE_VALUE;
     parser->attribute.name.type = TOKEN_NONE;
     parser->attribute.value.type = TOKEN_NONE;
     parser->attribute.is_quoted = 1;
+    parser->attribute.name_is_complete = 1;
   }
   return;
 }
@@ -157,18 +159,24 @@ static void parse_attribute(struct parser_t *parser, struct token_reference_t *r
 {
   if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
+    parser->attribute.name_is_complete = 1;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser_append_ref(&parser->attribute.name, ref);
   }
+  else if(ref->type == TOKEN_WHITESPACE || ref->type == TOKEN_SOLIDUS || ref->type == TOKEN_EQUAL) {
+    parser->attribute.name_is_complete = 1;
+  }
   else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser->context = PARSER_ATTRIBUTE_VALUE;
     parser->attribute.is_quoted = 1;
+    parser->attribute.name_is_complete = 1;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
     parser->context = PARSER_ATTRIBUTE_UNQUOTED_VALUE;
     parser_append_ref(&parser->attribute.value, ref);
     parser->attribute.is_quoted = 0;
+    parser->attribute.name_is_complete = 1;
   }
 
   return;
@@ -370,6 +378,13 @@ static VALUE parser_attribute_name_method(VALUE self)
   return ref_to_str(parser, &parser->attribute.name);
 }
 
+static VALUE parser_attribute_name_is_complete_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return parser->attribute.name_is_complete ? Qtrue : Qfalse;
+}
+
 static VALUE parser_attribute_value_method(VALUE self)
 {
   struct parser_t *parser = NULL;
@@ -414,6 +429,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "context", parser_context_method, 0);
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);
   rb_define_method(cParser, "attribute_name", parser_attribute_name_method, 0);
+  rb_define_method(cParser, "attribute_name_complete?", parser_attribute_name_is_complete_method, 0);
   rb_define_method(cParser, "attribute_value", parser_attribute_value_method, 0);
   rb_define_method(cParser, "attribute_quoted?", parser_attribute_is_quoted_method, 0);
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);

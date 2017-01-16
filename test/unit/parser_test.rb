@@ -370,12 +370,42 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "abcdefabcdef", @parser.document
   end
 
+  def test_yields_raw_tokens_when_block_given
+    tokens = []
+    parse("<foo>") do |*token|
+      tokens << token
+    end
+    assert_equal [[:tag_start, 0, 1], [:tag_name, 1, 4], [:tag_end, 4, 5]], tokens
+  end
+
+  def test_extract_method
+    parse("abcdefg")
+    assert_equal "a", @parser.extract(0, 1)
+    assert_equal "cd", @parser.extract(2, 4)
+  end
+
+  def test_extract_method_raises_argument_error_end_past_length
+    parse("abcdefg")
+    e = assert_raises(ArgumentError) do
+      @parser.extract(0, 32)
+    end
+    assert_equal "'end' argument not in range of document", e.message
+  end
+
+  def test_extract_method_raises_argument_error_end_less_than_start
+    parse("abcdefg")
+    e = assert_raises(ArgumentError) do
+      @parser.extract(1, 0)
+    end
+    assert_equal "'end' must be greater or equal than 'start'", e.message
+  end
+
   private
 
-  def parse(*parts)
+  def parse(*parts, &block)
     @parser ||= HtmlTokenizer::Parser.new
     parts.each do |part|
-      @parser.parse(part)
+      @parser.parse(part, &block)
     end
   end
 end

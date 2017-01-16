@@ -245,6 +245,9 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
   struct parser_t *parser = (struct parser_t *)data;
   struct token_reference_t ref = { type, tk->scan.cursor, length };
 
+  if(rb_block_given_p())
+    rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
+
   switch(parser->context)
   {
   case PARSER_NONE:
@@ -447,6 +450,28 @@ static VALUE parser_rawtext_text_method(VALUE self)
   return ref_to_str(parser, &parser->rawtext.text);
 }
 
+static VALUE parser_extract_method(VALUE self, VALUE start_p, VALUE end_p)
+{
+  struct parser_t *parser = NULL;
+  unsigned long int start, end;
+  struct token_reference_t ref;
+
+  Parser_Get_Struct(self, parser);
+
+  start = NUM2ULONG(start_p);
+  end = NUM2ULONG(end_p);
+  if(end < start) {
+    rb_raise(rb_eArgError, "'end' must be greater or equal than 'start'");
+  }
+  if(end > parser->doc.length) {
+    rb_raise(rb_eArgError, "'end' argument not in range of document");
+  }
+
+  ref.start = start;
+  ref.length = end - start;
+  return ref_to_str(parser, &ref);
+}
+
 void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
 {
   cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
@@ -464,4 +489,5 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);
   rb_define_method(cParser, "cdata_text", parser_cdata_text_method, 0);
   rb_define_method(cParser, "rawtext_text", parser_rawtext_text_method, 0);
+  rb_define_method(cParser, "extract", parser_extract_method, 2);
 }

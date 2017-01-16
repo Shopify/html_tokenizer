@@ -164,7 +164,15 @@ static void parse_attribute(struct parser_t *parser, struct token_reference_t *r
   else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser_append_ref(&parser->attribute.name, ref);
   }
-  else if(ref->type == TOKEN_WHITESPACE || ref->type == TOKEN_SOLIDUS || ref->type == TOKEN_EQUAL) {
+  else if(ref->type == TOKEN_EQUAL) {
+    parser->context = PARSER_ATTRIBUTE_VALUE;
+    parser->attribute.name_is_complete = 1;
+  }
+  else if(ref->type == TOKEN_SOLIDUS) {
+    parser->context = PARSER_TAG;
+    parser->attribute.name_is_complete = 1;
+  }
+  else if(ref->type == TOKEN_WHITESPACE) {
     parser->attribute.name_is_complete = 1;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
@@ -187,12 +195,13 @@ static void parse_attribute_value(struct parser_t *parser, struct token_referenc
   if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else if(ref->type == TOKEN_ATTRIBUTE_NAME) {
-    parser->context = PARSER_ATTRIBUTE;
-    parser_append_ref(&parser->attribute.name, ref);
+  else if(ref->type == TOKEN_SOLIDUS) {
+    parser->context = PARSER_TAG;
+    parser->attribute.name_is_complete = 1;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_VALUE_START) {
     parser_append_ref(&parser->attribute.value, ref);
+    parser->attribute.is_quoted = 1;
   }
   else if(ref->type == TOKEN_TEXT) {
     parser_append_ref(&parser->attribute.value, ref);
@@ -201,7 +210,9 @@ static void parse_attribute_value(struct parser_t *parser, struct token_referenc
     parser->context = PARSER_TAG;
   }
   else if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
+    parser->context = PARSER_ATTRIBUTE_UNQUOTED_VALUE;
     parser_append_ref(&parser->attribute.value, ref);
+    parser->attribute.is_quoted = 0;
   }
 
   return;

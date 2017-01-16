@@ -352,6 +352,15 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal :none, @parser.context
   end
 
+  def test_document_length
+    @parser = HtmlTokenizer::Parser.new
+    assert_equal 0, @parser.document_length
+    parse("abcdef")
+    assert_equal 6, @parser.document_length
+    parse("abcdef")
+    assert_equal 12, @parser.document_length
+  end
+
   private
 
   def parse(*parts)

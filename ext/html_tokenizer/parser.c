@@ -341,6 +341,13 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   return Qtrue;
 }
 
+static VALUE parser_document_length_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return ULONG2NUM(parser->doc.length);
+}
+
 static VALUE parser_context_method(VALUE self)
 {
   struct parser_t *parser = NULL;
@@ -436,6 +443,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
   rb_define_alloc_func(cParser, parser_allocate);
   rb_define_method(cParser, "initialize", parser_initialize_method, 0);
+  rb_define_method(cParser, "document_length", parser_document_length_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);
   rb_define_method(cParser, "context", parser_context_method, 0);
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);

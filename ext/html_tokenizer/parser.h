@@ -3,13 +3,22 @@
 
 enum parser_context {
   PARSER_NONE,
+  PARSER_SOLIDUS_OR_TAG_NAME,
   PARSER_TAG_NAME,
   PARSER_TAG,
-  PARSER_ATTRIBUTE,
-  PARSER_ATTRIBUTE_VALUE,
+  PARSER_ATTRIBUTE_NAME,
+  PARSER_ATTRIBUTE_WHITESPACE_OR_EQUAL,
+  PARSER_ATTRIBUTE_WHITESPACE_OR_VALUE,
+  PARSER_ATTRIBUTE_QUOTED_VALUE,
   PARSER_ATTRIBUTE_UNQUOTED_VALUE,
+  PARSER_TAG_END,
   PARSER_COMMENT,
   PARSER_CDATA,
+};
+
+struct parser_document_errors_t {
+  size_t count;
+  char **messages;
 };
 
 struct parser_document_t {
@@ -25,14 +34,13 @@ struct token_reference_t {
 
 struct parser_tag_t {
   struct token_reference_t name;
-  int is_closing;
+  int self_closing;
 };
 
 struct parser_attribute_t {
   struct token_reference_t name;
   struct token_reference_t value;
   int is_quoted;
-  int name_is_complete;
 };
 
 struct parser_rawtext_t {
@@ -52,6 +60,7 @@ struct parser_t
   struct tokenizer_t tk;
 
   struct parser_document_t doc;
+  struct parser_document_errors_t errors;
 
   enum parser_context context;
   struct parser_tag_t tag;
@@ -65,3 +74,6 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer);
 
 extern const rb_data_type_t ht_parser_data_type;
 #define Parser_Get_Struct(obj, sval) TypedData_Get_Struct(obj, struct parser_t, &ht_parser_data_type, sval)
+
+#define PARSE_AGAIN return 1
+#define PARSE_DONE return 0

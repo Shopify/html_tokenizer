@@ -2,6 +2,15 @@ require "minitest/autorun"
 require "html_tokenizer"
 
 class HtmlTokenizer::TokenizerTest < Minitest::Test
+  def test_closing_tag_without_start_is_text
+    assert_equal [
+      [:text, ">"],
+    ], tokenize(">")
+    assert_equal [
+      [:tag_start, "<"], [:tag_name, "foo"], [:tag_end, ">"], [:text, ">"],
+    ], tokenize("<foo>>")
+  end
+
   def test_tokenize_text
     result = tokenize("\n    hello world\n    ")
     assert_equal [[:text, "\n    hello world\n    "]], result
@@ -15,7 +24,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
 
   def test_tokenize_doctype
     assert_equal [
-      [:tag_start, "<!DOCTYPE"], [:whitespace, " "],
+      [:tag_start, "<"], [:tag_name, "!DOCTYPE"], [:whitespace, " "],
       [:attribute_name, "html"], [:tag_end, ">"]
     ], tokenize("<!DOCTYPE html>")
   end
@@ -31,12 +40,12 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
   def test_tokenize_complex_doctype
     text = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
     assert_equal [
-      [:tag_start, "<!DOCTYPE"], [:whitespace, " "],
+      [:tag_start, "<"], [:tag_name, "!DOCTYPE"], [:whitespace, " "],
       [:attribute_name, "html"], [:whitespace, " "],
       [:attribute_name, "PUBLIC"], [:whitespace, " "],
-      [:attribute_value_start, "\""], [:text, "-//W3C//DTD XHTML 1.0 Transitional//EN"], [:attribute_value_end, "\""],
+      [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "-//W3C//DTD XHTML 1.0 Transitional//EN"], [:attribute_quoted_value_end, "\""],
       [:whitespace, " "],
-      [:attribute_value_start, "\""], [:text, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"], [:attribute_value_end, "\""],
+      [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"], [:attribute_quoted_value_end, "\""],
       [:tag_end, ">"]
     ], tokenize(text)
   end
@@ -107,7 +116,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo="bar">')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "bar"], [:attribute_value_end, "\""],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "bar"], [:attribute_quoted_value_end, "\""],
       [:tag_end, ">"]
     ], result
   end
@@ -125,9 +134,9 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo="1"/bar="2">')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "1"], [:attribute_value_end, "\""],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "1"], [:attribute_quoted_value_end, "\""],
       [:solidus, "/"],
-      [:attribute_name, "bar"], [:equal, "="], [:attribute_value_start, "\""], [:text, "2"], [:attribute_value_end, "\""],
+      [:attribute_name, "bar"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "2"], [:attribute_quoted_value_end, "\""],
       [:tag_end, ">"]
     ], result
   end
@@ -136,7 +145,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo="bar"baz>')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "bar"], [:attribute_value_end, "\""],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "bar"], [:attribute_quoted_value_end, "\""],
       [:attribute_name, "baz"],
       [:tag_end, ">"]
     ], result
@@ -155,7 +164,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo=', "'bar'", '>')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "'"], [:text, "bar"], [:attribute_value_end, "'"],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "'"], [:attribute_quoted_value, "bar"], [:attribute_quoted_value_end, "'"],
       [:tag_end, ">"]
     ], result
   end
@@ -164,7 +173,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo=', "'bar", "baz'", '>')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "'"], [:text, "bar"], [:text, "baz"], [:attribute_value_end, "'"],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "'"], [:attribute_quoted_value, "bar"], [:attribute_quoted_value, "baz"], [:attribute_quoted_value_end, "'"],
       [:tag_end, ">"]
     ], result
   end
@@ -173,7 +182,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize("<div foo='bar'>")
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "'"], [:text, "bar"], [:attribute_value_end, "'"],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "'"], [:attribute_quoted_value, "bar"], [:attribute_quoted_value_end, "'"],
       [:tag_end, ">"]
     ], result
   end
@@ -201,7 +210,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<div foo="bar" />')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "],
-      [:attribute_name, "foo"], [:equal, "="], [:attribute_value_start, "\""], [:text, "bar"], [:attribute_value_end, "\""], [:whitespace, " "],
+      [:attribute_name, "foo"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "bar"], [:attribute_quoted_value_end, "\""], [:whitespace, " "],
       [:solidus, "/"], [:tag_end, ">"]
     ], result
   end
@@ -237,7 +246,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize('<script type="text/html">foo <b> bar</script>')
     assert_equal [
       [:tag_start, "<"], [:tag_name, "script"], [:whitespace, " "],
-      [:attribute_name, "type"], [:equal, "="], [:attribute_value_start, "\""], [:text, "text/html"], [:attribute_value_end, "\""],
+      [:attribute_name, "type"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "text/html"], [:attribute_quoted_value_end, "\""],
       [:tag_end, ">"],
       [:text, "foo "], [:text, "<b"], [:text, "> bar"],
       [:tag_start, "<"], [:solidus, "/"], [:tag_name, "script"], [:tag_end, ">"],
@@ -251,7 +260,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     result = tokenize(*data)
     assert_equal [
       [:text, "          "],
-      [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "], [:attribute_name, "define"], [:equal, "="], [:attribute_value_start, "\""], [:text, "{credential_96_credential1: new Shopify.ProviderCredentials()}"], [:attribute_value_end, "\""],
+      [:tag_start, "<"], [:tag_name, "div"], [:whitespace, " "], [:attribute_name, "define"], [:equal, "="], [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "{credential_96_credential1: new Shopify.ProviderCredentials()}"], [:attribute_quoted_value_end, "\""],
       [:whitespace, "\n                  "], [:tag_end, ">"]
     ], result
   end
@@ -270,7 +279,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     assert_equal [
       [:tag_start, "<"], [:tag_name, "a"], [:whitespace, " "],
       [:attribute_name, "href"], [:whitespace, " "], [:equal, "="],
-      [:attribute_value_start, "\""], [:text, "http://www.cra-arc.gc.ca/tx/bsnss/tpcs/gst-tps/menu-eng.html"], [:attribute_value_end, "\""],
+      [:attribute_quoted_value_start, "\""], [:attribute_quoted_value, "http://www.cra-arc.gc.ca/tx/bsnss/tpcs/gst-tps/menu-eng.html"], [:attribute_quoted_value_end, "\""],
       [:tag_end, ">"], [:text, "GST/HST"],
       [:tag_start, "<"], [:solidus, "/"], [:tag_name, "a"], [:tag_end, ">"]
     ], result

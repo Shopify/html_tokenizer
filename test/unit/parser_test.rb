@@ -11,11 +11,12 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("<div")
     assert_equal :tag_name, @parser.context
     assert_equal "div", @parser.tag_name
+    assert_equal false, @parser.closing_tag?
   end
 
   def test_open_attribute_value
     parse('<div "foo')
-    assert_equal :attribute_value, @parser.context
+    assert_equal :quoted_value, @parser.context
     assert_equal 'foo', @parser.attribute_value
     parse('bar"')
     assert_equal :tag, @parser.context
@@ -33,7 +34,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   def test_solidus_after_tag_name
     parse("<foo/")
     assert_equal "foo", @parser.tag_name
-    assert_equal :tag, @parser.context
+    assert_equal :tag_end, @parser.context
   end
 
   def test_whitespace_after_tag_name
@@ -45,6 +46,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   def test_context_is_tag_name_just_after_solidus
     parse("</")
     assert_equal :tag_name, @parser.context
+    assert_equal true, @parser.closing_tag?
   end
 
   def test_close_tag
@@ -55,7 +57,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   def test_attribute_name
     parse("<div foo")
     assert_equal "div", @parser.tag_name
-    assert_equal :attribute, @parser.context
+    assert_equal :attribute_name, @parser.context
     assert_equal "foo", @parser.attribute_name
     parse("bla")
     assert_equal "foobla", @parser.attribute_name
@@ -75,6 +77,8 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal :none, @parser.context
+    assert_equal false, @parser.closing_tag?
+    assert_equal true, @parser.self_closing_tag?
   end
 
   def test_attribute_value_solidus_close
@@ -84,6 +88,8 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
     assert_equal :none, @parser.context
+    assert_equal false, @parser.closing_tag?
+    assert_equal true, @parser.self_closing_tag?
   end
 
   def test_attribute_value_and_tag_close
@@ -93,6 +99,8 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal 'foo', @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
     assert_equal :none, @parser.context
+    assert_equal false, @parser.closing_tag?
+    assert_equal false, @parser.self_closing_tag?
   end
 
   def test_attribute_value_equal_and_tag_close
@@ -101,6 +109,8 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal :none, @parser.context
+    assert_equal false, @parser.closing_tag?
+    assert_equal false, @parser.self_closing_tag?
   end
 
   def test_attribute_value_open_quote
@@ -108,14 +118,14 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_nil @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
-    assert_equal :attribute_value, @parser.context
+    assert_equal :quoted_value, @parser.context
   end
 
   def test_attribute_name_and_value_open_quote
     parse("<div foo='")
-    assert_equal "'", @parser.attribute_value
+    assert_nil @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
-    assert_equal :attribute_value, @parser.context
+    assert_equal :quoted_value, @parser.context
   end
 
   def test_attribute_value_open
@@ -123,23 +133,37 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "div", @parser.tag_name
     assert_equal "foo", @parser.attribute_name
     assert_nil @parser.attribute_value
-    assert_equal :attribute_value, @parser.context
+    assert_equal :after_equal, @parser.context
   end
 
   def test_attribute_name_with_solidus
     parse("<div foo=/")
     assert_equal "foo", @parser.attribute_name
-    assert_nil @parser.attribute_value
+    assert_equal "/", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :tag, @parser.context
+    assert_equal :unquoted_value, @parser.context
+  end
+
+  def test_solidus_anywhere_doesnt_affect_closing_flags
+    parse("<div / >")
+    assert_equal "div", @parser.tag_name
+    assert_equal false, @parser.closing_tag?
+    assert_equal false, @parser.self_closing_tag?
+  end
+
+  def test_solidus_at_beginning_and_end_affect_closing_flags
+    parse("</div/>")
+    assert_equal "div", @parser.tag_name
+    assert_equal true, @parser.closing_tag?
+    assert_equal true, @parser.self_closing_tag?
   end
 
   def test_attribute_name_with_solidus_and_name
     parse("<div foo=/bar")
-    assert_equal "bar", @parser.attribute_name
-    assert_nil @parser.attribute_value
+    assert_equal "foo", @parser.attribute_name
+    assert_equal "/bar", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :attribute, @parser.context
+    assert_equal :unquoted_value, @parser.context
   end
 
   def test_attribute_with_value_with_solidus
@@ -150,8 +174,8 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("/baz")
     assert_equal "baz", @parser.attribute_name
     assert_nil @parser.attribute_value
-    assert_equal true, @parser.attribute_quoted?
-    assert_equal :attribute, @parser.context
+    assert_equal false, @parser.attribute_quoted?
+    assert_equal :attribute_name, @parser.context
   end
 
   def test_attribute_with_unquoted_value
@@ -159,7 +183,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :attribute_value, @parser.context
+    assert_equal :unquoted_value, @parser.context
   end
 
   def test_attribute_with_unquoted_value_tag_end
@@ -172,10 +196,10 @@ class HtmlTokenizer::ParserTest < Minitest::Test
 
   def test_attribute_with_unquoted_value_with_solidus
     parse("<div foo=ba", "r", "/baz")
-    assert_equal "baz", @parser.attribute_name
-    assert_nil @parser.attribute_value
+    assert_equal "foo", @parser.attribute_name
+    assert_equal "bar/baz", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :attribute, @parser.context
+    assert_equal :unquoted_value, @parser.context
   end
 
   def test_attribute_with_unquoted_value_with_space
@@ -183,7 +207,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "baz", @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :attribute, @parser.context
+    assert_equal :attribute_name, @parser.context
   end
 
   def test_attribute_with_multipart_unquoted_value
@@ -191,50 +215,45 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar&baz", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
-    assert_equal :attribute_value, @parser.context
+    assert_equal :unquoted_value, @parser.context
   end
 
   def test_attribute_name_incomplete
     parse("<div foo")
     assert_equal "foo", @parser.attribute_name
-    assert_equal false, @parser.attribute_name_complete?
-    assert_equal :attribute, @parser.context
+    assert_equal :attribute_name, @parser.context
   end
 
-  def test_attribute_name_is_complete_when_tag_is_closed
-    parse("<div foo>")
+  def test_space_after_attribute_name_switches_context
+    parse("<div foo ")
     assert_equal "foo", @parser.attribute_name
-    assert_equal true, @parser.attribute_name_complete?
-    assert_equal :none, @parser.context
+    assert_equal :after_attribute_name, @parser.context
   end
 
-  def test_attribute_name_is_complete_after_solidus
+  def test_solidus_after_attribute_name_switches_context
     parse("<div foo/")
     assert_equal "foo", @parser.attribute_name
-    assert_equal true, @parser.attribute_name_complete?
-    assert_equal :tag, @parser.context
+    assert_equal :tag_end, @parser.context
   end
 
   def test_attribute_name_is_complete_after_equal
     parse("<div foo=")
     assert_equal "foo", @parser.attribute_name
-    assert_equal true, @parser.attribute_name_complete?
-    assert_equal :attribute_value, @parser.context
+    assert_equal :after_equal, @parser.context
   end
 
   def test_attribute_name_without_value
     parse("<div foo ")
     assert_equal "foo", @parser.attribute_name
-    assert_equal true, @parser.attribute_name_complete?
     assert_nil @parser.attribute_value
-    assert_equal :attribute, @parser.context
+    assert_equal :after_attribute_name, @parser.context
   end
 
   def test_attribute_name_are_separated_by_space
     parse("<div foo bar")
     assert_equal "bar", @parser.attribute_name
     assert_nil @parser.attribute_value
-    assert_equal :attribute, @parser.context
+    assert_equal :attribute_name, @parser.context
   end
 
   def test_comment_context
@@ -249,7 +268,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_nil @parser.cdata_text
   end
 
-  def test_comment_text
+    def test_comment_text
     parse("<!-- foo")
     assert_equal :comment, @parser.context
     assert_equal " foo", @parser.comment_text

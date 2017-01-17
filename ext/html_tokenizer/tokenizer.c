@@ -93,10 +93,12 @@ VALUE token_type_to_symbol(enum token_type type)
     return ID2SYM(rb_intern("tag_end"));
   case TOKEN_ATTRIBUTE_NAME:
     return ID2SYM(rb_intern("attribute_name"));
-  case TOKEN_ATTRIBUTE_VALUE_START:
-    return ID2SYM(rb_intern("attribute_value_start"));
-  case TOKEN_ATTRIBUTE_VALUE_END:
-    return ID2SYM(rb_intern("attribute_value_end"));
+  case TOKEN_ATTRIBUTE_QUOTED_VALUE_START:
+    return ID2SYM(rb_intern("attribute_quoted_value_start"));
+  case TOKEN_ATTRIBUTE_QUOTED_VALUE:
+    return ID2SYM(rb_intern("attribute_quoted_value"));
+  case TOKEN_ATTRIBUTE_QUOTED_VALUE_END:
+    return ID2SYM(rb_intern("attribute_quoted_value_end"));
   case TOKEN_ATTRIBUTE_UNQUOTED_VALUE:
     return ID2SYM(rb_intern("attribute_unquoted_value"));
   case TOKEN_CDATA_START:
@@ -242,6 +244,7 @@ static int is_tag_name(struct scan_t *scan, const char **tag_name, unsigned long
 
   return *tag_name_length != 0;
 }
+
 static int is_whitespace(struct scan_t *scan, unsigned long int *length)
 {
   long unsigned int i;
@@ -329,56 +332,8 @@ static int scan_html(struct tokenizer_t *tk)
 {
   long unsigned int length = 0;
 
-  if(is_comment_start(&tk->scan)) {
-    tokenizer_callback(tk, TOKEN_COMMENT_START, 4);
-    push_context(tk, TOKENIZER_COMMENT);
-    return 1;
-  }
-  else if(is_doctype(&tk->scan)) {
-    tokenizer_callback(tk, TOKEN_TAG_START, 9);
-    push_context(tk, TOKENIZER_ATTRIBUTES);
-    return 1;
-  }
-  else if(is_cdata_start(&tk->scan)) {
-    tokenizer_callback(tk, TOKEN_CDATA_START, 9);
-    push_context(tk, TOKENIZER_CDATA);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '<')) {
-    tokenizer_callback(tk, TOKEN_TAG_START, 1);
-    if(is_char(&tk->scan, '/')) {
-      tk->is_closing_tag = 1;
-      tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
-    }
-    else {
-      tk->is_closing_tag = 0;
-    }
-    if(tk->current_tag)
-      tk->current_tag[0] = '\0';
+  if(is_char(&tk->scan, '<')) {
     push_context(tk, TOKENIZER_OPEN_TAG);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '>')) {
-    tokenizer_callback(tk, TOKEN_TAG_END, 1);
-
-    if(tk->current_tag && !tk->is_closing_tag) {
-      if(!strcasecmp("title", tk->current_tag) ||
-          !strcasecmp("textarea", tk->current_tag)) {
-        push_context(tk, TOKENIZER_RCDATA);
-      }
-      else if(!strcasecmp("style", tk->current_tag) ||
-          !strcasecmp("xmp", tk->current_tag) || !strcasecmp("iframe", tk->current_tag) ||
-          !strcasecmp("noembed", tk->current_tag) || !strcasecmp("noframes", tk->current_tag) ||
-          !strcasecmp("listing", tk->current_tag)) {
-        push_context(tk, TOKENIZER_RAWTEXT);
-      }
-      else if(!strcasecmp("script", tk->current_tag)) {
-        push_context(tk, TOKENIZER_SCRIPT_DATA);
-      }
-      else if(!strcasecmp("plaintext", tk->current_tag)) {
-        push_context(tk, TOKENIZER_PLAINTEXT);
-      }
-    }
     return 1;
   }
   else if(is_text(&tk->scan, &length)) {
@@ -389,6 +344,103 @@ static int scan_html(struct tokenizer_t *tk)
 }
 
 static int scan_open_tag(struct tokenizer_t *tk)
+{
+  unsigned long int length = 0;
+
+  if(is_comment_start(&tk->scan)) {
+    tokenizer_callback(tk, TOKEN_COMMENT_START, 4);
+    pop_context(tk); // back to html
+    push_context(tk, TOKENIZER_COMMENT);
+    return 1;
+  }
+  else if(is_doctype(&tk->scan)) {
+    tokenizer_callback(tk, TOKEN_TAG_START, 1);
+    tokenizer_callback(tk, TOKEN_TAG_NAME, 8);
+    return 1;
+  }
+  else if(is_cdata_start(&tk->scan)) {
+    tokenizer_callback(tk, TOKEN_CDATA_START, 9);
+    pop_context(tk); // back to html
+    push_context(tk, TOKENIZER_CDATA);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '<')) {
+    tokenizer_callback(tk, TOKEN_TAG_START, 1);
+    push_context(tk, TOKENIZER_SOLIDUS_OR_TAG_NAME);
+    return 1;
+  }
+  else if(is_whitespace(&tk->scan, &length)) {
+    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
+    return 1;
+  }
+  else if(is_attribute_name(&tk->scan, &length)) {
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_NAME, length);
+    push_context(tk, TOKENIZER_ATTRIBUTE_NAME);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '\'') || is_char(&tk->scan, '"')) {
+    push_context(tk, TOKENIZER_ATTRIBUTE_VALUE);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '=')) {
+    tokenizer_callback(tk, TOKEN_EQUAL, 1);
+    push_context(tk, TOKENIZER_ATTRIBUTE_VALUE);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '/')) {
+    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
+    return 1;
+  }
+  else if(is_char(&tk->scan, '>')) {
+    tokenizer_callback(tk, TOKEN_TAG_END, 1);
+    pop_context(tk); // pop tag context
+
+    if(tk->current_tag && !tk->is_closing_tag) {
+      if(!strcasecmp("title", tk->current_tag) ||
+          !strcasecmp("textarea", tk->current_tag)) {
+        push_context(tk, TOKENIZER_RCDATA);
+        return 1;
+      }
+      else if(!strcasecmp("style", tk->current_tag) ||
+          !strcasecmp("xmp", tk->current_tag) || !strcasecmp("iframe", tk->current_tag) ||
+          !strcasecmp("noembed", tk->current_tag) || !strcasecmp("noframes", tk->current_tag) ||
+          !strcasecmp("listing", tk->current_tag)) {
+        push_context(tk, TOKENIZER_RAWTEXT);
+        return 1;
+      }
+      else if(!strcasecmp("script", tk->current_tag)) {
+        push_context(tk, TOKENIZER_SCRIPT_DATA);
+        return 1;
+      }
+      else if(!strcasecmp("plaintext", tk->current_tag)) {
+        push_context(tk, TOKENIZER_PLAINTEXT);
+        return 1;
+      }
+    }
+    return 1;
+  }
+  return 0;
+}
+
+static int scan_solidus_or_tag_name(struct tokenizer_t *tk)
+{
+  if(tk->current_tag)
+    tk->current_tag[0] = '\0';
+
+  if(is_char(&tk->scan, '/')) {
+    tk->is_closing_tag = 1;
+    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
+  }
+  else {
+    tk->is_closing_tag = 0;
+  }
+
+  pop_context(tk);
+  push_context(tk, TOKENIZER_TAG_NAME);
+  return 1;
+}
+
+static int scan_tag_name(struct tokenizer_t *tk)
 {
   unsigned long int length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
@@ -407,57 +459,9 @@ static int scan_open_tag(struct tokenizer_t *tk)
     tokenizer_callback(tk, TOKEN_TAG_NAME, tag_name_length);
     return 1;
   }
-  else if(is_char(&tk->scan, '/')) {
-    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
-    push_context(tk, TOKENIZER_ATTRIBUTES);
-    return 1;
-  }
-  else if(is_whitespace(&tk->scan, &length)) {
-    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
-    push_context(tk, TOKENIZER_ATTRIBUTES);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '>')) {
-    pop_context(tk);
-    return 1;
-  }
-  return 0;
-}
 
-static int scan_attributes(struct tokenizer_t *tk)
-{
-  unsigned long int length = 0;
-
-  if(is_whitespace(&tk->scan, &length)) {
-    tokenizer_callback(tk, TOKEN_WHITESPACE, length);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '=')) {
-    tk->found_attribute = 0;
-    tokenizer_callback(tk, TOKEN_EQUAL, 1);
-    push_context(tk, TOKENIZER_ATTRIBUTE_VALUE);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '/')) {
-    tokenizer_callback(tk, TOKEN_SOLIDUS, 1);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '>')) {
-    pop_context(tk);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '\'') || is_char(&tk->scan, '"')) {
-    tk->attribute_value_start = tk->scan.string[tk->scan.cursor];
-    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_START, 1);
-    push_context(tk, TOKENIZER_ATTRIBUTE_STRING);
-    return 1;
-  }
-  else if(is_attribute_name(&tk->scan, &length)) {
-    tokenizer_callback(tk, TOKEN_ATTRIBUTE_NAME, length);
-    push_context(tk, TOKENIZER_ATTRIBUTE_NAME);
-    return 1;
-  }
-  return 0;
+  pop_context(tk); // back to open_tag
+  return 1;
 }
 
 static int scan_attribute_name(struct tokenizer_t *tk)
@@ -468,58 +472,56 @@ static int scan_attribute_name(struct tokenizer_t *tk)
     tokenizer_callback(tk, TOKEN_ATTRIBUTE_NAME, length);
     return 1;
   }
-  else if(is_whitespace(&tk->scan, &length) || is_char(&tk->scan, '/') ||
-      is_char(&tk->scan, '>') || is_char(&tk->scan, '=')) {
-    pop_context(tk);
-    return 1;
-  }
-  return 0;
+
+  pop_context(tk); // back to open tag
+  return 1;
 }
 
 static int scan_attribute_value(struct tokenizer_t *tk)
 {
   unsigned long int length = 0;
 
-  if(tk->last_token == TOKEN_ATTRIBUTE_VALUE_END) {
-    pop_context(tk);
-    return 1;
-  }
-  else if(is_char(&tk->scan, '/') || is_char(&tk->scan, '>')) {
-    pop_context(tk);
-    return 1;
-  }
-  else if(is_whitespace(&tk->scan, &length)) {
+  if(is_whitespace(&tk->scan, &length)) {
     tokenizer_callback(tk, TOKEN_WHITESPACE, length);
-    if(tk->found_attribute)
-      pop_context(tk);
     return 1;
   }
   else if(is_char(&tk->scan, '\'') || is_char(&tk->scan, '"')) {
     tk->attribute_value_start = tk->scan.string[tk->scan.cursor];
-    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_START, 1);
-    push_context(tk, TOKENIZER_ATTRIBUTE_STRING);
-    tk->found_attribute = 1;
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_QUOTED_VALUE_START, 1);
+    pop_context(tk); // back to open tag
+    push_context(tk, TOKENIZER_ATTRIBUTE_QUOTED);
     return 1;
   }
-  else if(is_unquoted_value(&tk->scan, &length)) {
-    tokenizer_callback(tk, TOKEN_ATTRIBUTE_UNQUOTED_VALUE, length);
-    tk->found_attribute = 1;
-    return 1;
-  }
-  return 0;
+
+  pop_context(tk); // back to open tag
+  push_context(tk, TOKENIZER_ATTRIBUTE_UNQUOTED);
+  return 1;
 }
 
-static int scan_attribute_string(struct tokenizer_t *tk)
+static int scan_attribute_unquoted(struct tokenizer_t *tk)
+{
+  unsigned long int length = 0;
+
+  if(is_unquoted_value(&tk->scan, &length)) {
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_UNQUOTED_VALUE, length);
+    return 1;
+  }
+
+  pop_context(tk); // back to open tag
+  return 1;
+}
+
+static int scan_attribute_quoted(struct tokenizer_t *tk)
 {
   unsigned long int length = 0;
 
   if(is_char(&tk->scan, tk->attribute_value_start)) {
-    tokenizer_callback(tk, TOKEN_ATTRIBUTE_VALUE_END, 1);
-    pop_context(tk);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_QUOTED_VALUE_END, 1);
+    pop_context(tk); // back to open tag
     return 1;
   }
   else if(is_attribute_string(&tk->scan, &length, tk->attribute_value_start)) {
-    tokenizer_callback(tk, TOKEN_TEXT, length);
+    tokenizer_callback(tk, TOKEN_ATTRIBUTE_QUOTED_VALUE, length);
     return 1;
   }
   return 0;
@@ -601,6 +603,10 @@ static int scan_once(struct tokenizer_t *tk)
     return scan_html(tk);
   case TOKENIZER_OPEN_TAG:
     return scan_open_tag(tk);
+  case TOKENIZER_SOLIDUS_OR_TAG_NAME:
+    return scan_solidus_or_tag_name(tk);
+  case TOKENIZER_TAG_NAME:
+    return scan_tag_name(tk);
   case TOKENIZER_COMMENT:
     return scan_comment(tk);
   case TOKENIZER_CDATA:
@@ -613,14 +619,14 @@ static int scan_once(struct tokenizer_t *tk)
     return scan_rawtext(tk);
   case TOKENIZER_PLAINTEXT:
     return scan_plaintext(tk);
-  case TOKENIZER_ATTRIBUTES:
-    return scan_attributes(tk);
   case TOKENIZER_ATTRIBUTE_NAME:
     return scan_attribute_name(tk);
   case TOKENIZER_ATTRIBUTE_VALUE:
     return scan_attribute_value(tk);
-  case TOKENIZER_ATTRIBUTE_STRING:
-    return scan_attribute_string(tk);
+  case TOKENIZER_ATTRIBUTE_UNQUOTED:
+    return scan_attribute_unquoted(tk);
+  case TOKENIZER_ATTRIBUTE_QUOTED:
+    return scan_attribute_quoted(tk);
   }
   return 0;
 }

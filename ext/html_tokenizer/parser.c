@@ -10,6 +10,7 @@ static void parser_mark(void *ptr)
 static void parser_free(void *ptr)
 {
   struct parser_t *parser = ptr;
+  size_t i;
 
   if(parser) {
     if(parser->doc.data) {
@@ -18,7 +19,7 @@ static void parser_free(void *ptr)
       parser->doc.data = NULL;
     }
     if(parser->errors.count && parser->errors.messages) {
-      for(size_t i=0; i<parser->errors.count; i++) {
+      for(i=0; i<parser->errors.count; i++) {
         if(!parser->errors.messages[i])
           continue;
         DBG_PRINT("parser=%p xfree(parser->errors.messages[%u]) %p", parser, i, parser->errors.messages[i]);
@@ -575,6 +576,7 @@ static VALUE parser_extract_method(VALUE self, VALUE start_p, VALUE end_p)
     rb_raise(rb_eArgError, "'end' argument not in range of document");
   }
 
+  ref.type = TOKEN_TEXT; // anything not NONE
   ref.start = start;
   ref.length = end - start;
   return ref_to_str(parser, &ref);

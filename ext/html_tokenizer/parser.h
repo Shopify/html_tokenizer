@@ -24,12 +24,16 @@ struct parser_document_errors_t {
 struct parser_document_t {
   long unsigned int length;
   char *data;
+  long unsigned int line_number;
+  long unsigned int column_number;
 };
 
 struct token_reference_t {
   enum token_type type;
   long unsigned int start;
   long unsigned int length;
+  long unsigned int line_number;
+  long unsigned int column_number;
 };
 
 struct parser_tag_t {

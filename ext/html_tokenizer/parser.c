@@ -66,6 +66,8 @@ static inline void parser_append_ref(struct token_reference_t *dest, struct toke
     dest->type = src->type;
     dest->start = src->start;
     dest->length = src->length;
+    dest->line_number = src->line_number;
+    dest->column_number = src->column_number;
   }
   else {
     dest->type = src->type;
@@ -315,14 +317,42 @@ static inline int rawtext_context(struct parser_t *parser)
       ctx == TOKENIZER_SCRIPT_DATA || ctx == TOKENIZER_PLAINTEXT);
 }
 
+static void parser_adjust_line_number(struct parser_t *parser, long unsigned int start, long unsigned int length)
+{
+  long unsigned int i;
+
+  for(i = start;i < (start + length); i++) {
+    if(parser->doc.data[i] == '\n') {
+      parser->doc.column_number = 0;
+      parser->doc.line_number += 1;
+    }
+    else {
+      parser->doc.column_number += 1;
+    }
+  }
+
+  return;
+}
+
 static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type type, unsigned long int length, void *data)
 {
   struct parser_t *parser = (struct parser_t *)data;
-  struct token_reference_t ref = { type, tk->scan.cursor, length };
+  struct token_reference_t ref = {
+    .type = type,
+    .start = tk->scan.cursor,
+    .length = length,
+    .line_number = parser->doc.line_number,
+    .column_number = parser->doc.column_number,
+  };
   int parse_again = 1;
 
-  if(rb_block_given_p())
-    rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
+  if(rb_block_given_p()) {
+    rb_yield_values(5, token_type_to_symbol(type),
+      INT2NUM(ref.start), INT2NUM(ref.start + ref.length),
+      INT2NUM(ref.line_number), INT2NUM(ref.column_number));
+  }
+
+  parser_adjust_line_number(parser, ref.start, ref.length);
 
   while(parse_again) {
     switch(parser->context)
@@ -390,6 +420,9 @@ static VALUE parser_initialize_method(VALUE self)
   parser->doc.length = 0;
   parser->doc.data = NULL;
 
+  parser->doc.line_number = 1;
+  parser->doc.column_number = 0;
+
   parser->errors.count = 0;
   parser->errors.messages = NULL;
 
@@ -407,11 +440,11 @@ static int parser_document_append(struct parser_t *parser, const char *string, u
   return 1;
 }
 
-static VALUE parser_parse_method(VALUE self, VALUE source)
+static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
 {
   struct parser_t *parser = NULL;
   char *string = NULL;
-  long unsigned int length = 0;
+  long unsigned int length = 0, cursor = 0;
 
   if(NIL_P(source))
     return Qnil;
@@ -422,19 +455,35 @@ static VALUE parser_parse_method(VALUE self, VALUE source)
   string = StringValueCStr(source);
   length = strlen(string);
 
-  parser->tk.scan.cursor = parser->doc.length;
+  cursor = parser->doc.length;
 
   if(!parser_document_append(parser, string, length)) {
     // error
     return Qnil;
   }
 
-  parser->tk.scan.string = parser->doc.data;
-  parser->tk.scan.length = parser->doc.length;
+  if(is_placeholder) {
+    parser_adjust_line_number(parser, cursor, length);
+  }
+  else {
+    parser->tk.scan.cursor = cursor;
+    parser->tk.scan.string = parser->doc.data;
+    parser->tk.scan.length = parser->doc.length;
 
-  tokenizer_scan_all(&parser->tk);
+    tokenizer_scan_all(&parser->tk);
+  }
 
   return Qtrue;
+}
+
+static VALUE parser_parse_method(VALUE self, VALUE source)
+{
+  return parser_append_data(self, source, 0);
+}
+
+static VALUE parser_append_placeholder_method(VALUE self, VALUE source)
+{
+  return parser_append_data(self, source, 1);
 }
 
 static VALUE parser_document_method(VALUE self)
@@ -590,6 +639,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "document", parser_document_method, 0);
   rb_define_method(cParser, "document_length", parser_document_length_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);
+  rb_define_method(cParser, "append_placeholder", parser_append_placeholder_method, 1);
   rb_define_method(cParser, "context", parser_context_method, 0);
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);
   rb_define_method(cParser, "closing_tag?", parser_closing_tag_method, 0);

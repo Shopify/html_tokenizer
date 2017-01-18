@@ -394,7 +394,31 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("<foo>") do |*token|
       tokens << token
     end
-    assert_equal [[:tag_start, 0, 1], [:tag_name, 1, 4], [:tag_end, 4, 5]], tokens
+    assert_equal [[:tag_start, 0, 1, 1, 0], [:tag_name, 1, 4, 1, 1], [:tag_end, 4, 5, 1, 4]], tokens
+  end
+
+  def test_yields_line_and_column_numbers
+    tokens = []
+    parse("<\n>") do |*token|
+      tokens << token
+    end
+    assert_equal [[:tag_start, 0, 1, 1, 0], [:whitespace, 1, 2, 1, 1], [:tag_end, 2, 3, 2, 0]], tokens
+  end
+
+  def test_append_placeholder_adjusts_line_and_column_numbers_but_does_not_parse
+    @parser = HtmlTokenizer::Parser.new
+    tokens = []
+    @parser.parse("foo\n") do |*token|
+      tokens << token
+    end
+    @parser.append_placeholder("<%= some ruby do\n  foo\nend %>\n") do |*token|
+      tokens << token
+    end
+    @parser.parse("bar\n") do |*token|
+      tokens << token
+    end
+    assert_equal [[:text, 0, 4, 1, 0], [:text, 34, 38, 5, 0]], tokens
+    assert_equal "bar\n", @parser.extract(34, 38)
   end
 
   def test_extract_method

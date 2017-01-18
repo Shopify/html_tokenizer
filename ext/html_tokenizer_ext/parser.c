@@ -711,6 +711,20 @@ static VALUE parser_errors_method(VALUE self, VALUE error_p)
   return list;
 }
 
+static VALUE parser_line_number_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return ULONG2NUM(parser->doc.line_number);
+}
+
+static VALUE parser_column_number_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return ULONG2NUM(parser->doc.column_number);
+}
+
 void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
 {
   cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
@@ -718,6 +732,8 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "initialize", parser_initialize_method, 0);
   rb_define_method(cParser, "document", parser_document_method, 0);
   rb_define_method(cParser, "document_length", parser_document_length_method, 0);
+  rb_define_method(cParser, "line_number", parser_line_number_method, 0);
+  rb_define_method(cParser, "column_number", parser_column_number_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);
   rb_define_method(cParser, "append_placeholder", parser_append_placeholder_method, 1);
   rb_define_method(cParser, "extract", parser_extract_method, 2);

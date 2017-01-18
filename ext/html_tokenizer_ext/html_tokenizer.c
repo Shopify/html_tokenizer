@@ -4,7 +4,7 @@
 
 static VALUE mHtmlTokenizer = Qnil;
 
-void Init_html_tokenizer()
+void Init_html_tokenizer_ext()
 {
   mHtmlTokenizer = rb_define_module("HtmlTokenizer");
   Init_html_tokenizer_tokenizer(mHtmlTokenizer);

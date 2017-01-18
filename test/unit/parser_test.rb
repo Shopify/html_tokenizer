@@ -19,7 +19,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal :quoted_value, @parser.context
     assert_equal 'foo', @parser.attribute_value
     parse('bar"')
-    assert_equal :tag, @parser.context
+    assert_equal :space_after_attribute, @parser.context
     assert_equal 'foobar', @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
   end
@@ -170,7 +170,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("<div foo='bar'")
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
-    assert_equal :tag, @parser.context
+    assert_equal :space_after_attribute, @parser.context
     parse("/baz")
     assert_equal "baz", @parser.attribute_name
     assert_nil @parser.attribute_value
@@ -268,7 +268,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_nil @parser.cdata_text
   end
 
-    def test_comment_text
+  def test_comment_text
     parse("<!-- foo")
     assert_equal :comment, @parser.context
     assert_equal " foo", @parser.comment_text
@@ -441,6 +441,111 @@ class HtmlTokenizer::ParserTest < Minitest::Test
       @parser.extract(1, 0)
     end
     assert_equal "'end' must be greater or equal than 'start'", e.message
+  end
+
+  def test_solidus_or_tag_name_error
+    parse('<>')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected '/' or tag name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 1, @parser.errors.first.column
+  end
+
+  def test_solidus_or_tag_name_error_2
+    parse('< ')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected '/' or tag name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 1, @parser.errors.first.column
+  end
+
+  def test_tag_name_error
+    parse('<foo/')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected whitespace or tag end", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 4, @parser.errors.first.column
+  end
+
+  def test_tag_error
+    parse('<foo =')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected whitespace, tag end, attribute name or value", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 5, @parser.errors.first.column
+  end
+
+  def test_tag_end_error
+    parse('<foo /x')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected '>' after '/'", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 6, @parser.errors.first.column
+  end
+
+  def test_tag_end_error_2
+    parse('<foo / ')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected '>' after '/'", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 6, @parser.errors.first.column
+  end
+
+  def test_attribute_name_error
+    parse('<foo bar/')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 8, @parser.errors.first.column
+  end
+
+  def test_attribute_whitespace_or_equal_error
+    parse('<foo bar/')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 8, @parser.errors.first.column
+  end
+
+  def test_attribute_whitespace_or_equal_error
+    parse('<foo bar = >')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected attribute value after '='", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 11, @parser.errors.first.column
+  end
+
+  def test_attribute_after_quoted_value
+    parse('<foo bar=""x')
+    assert_equal 1, @parser.errors_count
+    assert_equal "expected space after attribute value", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.line
+    assert_equal 11, @parser.errors.first.column
+  end
+
+  def test_valid_syntaxes
+    parse(
+      '<div>',
+      '<div />',
+      '<div data-thing>',
+      '<div data-thing />',
+      '<div "value">',
+      '<div "value" />',
+      '<div data-thing   =   "value">',
+      '<div data-thing="value">',
+      '<div data-thing="value" />',
+      '<div data-thing data-other-thing="value">',
+      '<div data-thing data-other-thing="value" />',
+      "<div \n\t\r data-thing \n\t\r data-other-thing='value'>",
+      '<div data-thing "value">',
+      '<div data-thing "value" />',
+      '<div "value" data-thing>',
+      '<div "value" data-thing />',
+      '<div foo=unquoted=bla />',
+      '<div foo=unquoted=bla>',
+      '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
+    )
+    assert_equal 0, @parser.errors_count
   end
 
   private

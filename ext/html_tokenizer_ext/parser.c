@@ -18,18 +18,18 @@ static void parser_free(void *ptr)
       xfree(parser->doc.data);
       parser->doc.data = NULL;
     }
-    if(parser->errors.count && parser->errors.messages) {
-      for(i=0; i<parser->errors.count; i++) {
-        if(!parser->errors.messages[i])
+    if(parser->errors_count && parser->errors) {
+      for(i=0; i<parser->errors_count; i++) {
+        if(!parser->errors[i].message)
           continue;
-        DBG_PRINT("parser=%p xfree(parser->errors.messages[%u]) %p", parser, i, parser->errors.messages[i]);
-        xfree(parser->errors.messages[i]);
-        parser->errors.messages[i] = NULL;
+        DBG_PRINT("parser=%p xfree(parser->errors.messages[%u]) %p", parser, i, parser->errors[i].message);
+        xfree(parser->errors[i].message);
+        parser->errors[i].message = NULL;
       }
-      DBG_PRINT("parser=%p xfree(parser->errors.messages) %p", parser, parser->errors.messages);
-      xfree(parser->errors.messages);
-      parser->errors.messages = NULL;
-      parser->errors.count = 0;
+      DBG_PRINT("parser=%p xfree(parser->errors.messages) %p", parser, parser->errors);
+      xfree(parser->errors);
+      parser->errors = NULL;
+      parser->errors_count = 0;
     }
     DBG_PRINT("parser=%p xfree(parser)", parser);
     xfree(parser);
@@ -73,6 +73,16 @@ static inline void parser_append_ref(struct token_reference_t *dest, struct toke
     dest->type = src->type;
     dest->length += src->length;
   }
+}
+
+static void parser_add_error(struct parser_t *parser, const char *message)
+{
+  REALLOC_N(parser->errors, struct parser_document_error_t, parser->errors_count + 1);
+  parser->errors[parser->errors_count].message = strdup(message);
+  parser->errors[parser->errors_count].line_number = parser->doc.line_number;
+  parser->errors[parser->errors_count].column_number = parser->doc.column_number;
+  parser->errors_count += 1;
+  return;
 }
 
 static int parse_none(struct parser_t *parser, struct token_reference_t *ref)
@@ -138,7 +148,7 @@ static int parse_solidus_or_tag_name(struct parser_t *parser, struct token_refer
     PARSE_AGAIN;
   }
   else {
-    // expected expected solidus or tag name
+    parser_add_error(parser, "expected '/' or tag name");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -157,7 +167,7 @@ static int parse_tag_name(struct parser_t *parser, struct token_reference_t *ref
     parser->context = PARSER_NONE;
   }
   else {
-    // expected tag name or whitespace
+    parser_add_error(parser, "expected whitespace or tag end");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -190,6 +200,7 @@ static int parse_tag(struct parser_t *parser, struct token_reference_t *ref)
   }
   else {
     // unexpected
+    parser_add_error(parser, "expected whitespace, tag end, attribute name or value");
   }
   PARSE_DONE;
 }
@@ -201,7 +212,7 @@ static int parse_tag_end(struct parser_t *parser, struct token_reference_t *ref)
     parser->context = PARSER_NONE;
   }
   else {
-    // expected '>' after solidus
+    parser_add_error(parser, "expected '>' after '/'");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -213,7 +224,7 @@ static int parse_attribute_name(struct parser_t *parser, struct token_reference_
   if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser_append_ref(&parser->attribute.name, ref);
   }
-  else if(ref->type == TOKEN_TAG_END || ref->type == TOKEN_SOLIDUS) {
+  else if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -225,7 +236,7 @@ static int parse_attribute_name(struct parser_t *parser, struct token_reference_
     parser->context = PARSER_ATTRIBUTE_WHITESPACE_OR_VALUE;
   }
   else {
-    // unexpected
+    parser_add_error(parser, "expected whitespace, '>' or '=' after attribute name");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -249,10 +260,14 @@ static int parse_attribute_whitespace_or_equal(struct parser_t *parser, struct t
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
-  else {
-    // unexpected
+  else if(ref->type == TOKEN_ATTRIBUTE_QUOTED_VALUE_START) {
+    // start quoted value after whitespace
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
+  }
+  else {
+    // not reachable
+    rb_raise(rb_eArgError, "expected '/', '>', \", ' or '=' after attribute name");
   }
 
   PARSE_DONE;
@@ -272,7 +287,7 @@ static int parse_attribute_whitespace_or_value(struct parser_t *parser, struct t
     PARSE_AGAIN;
   }
   else {
-    // expected value after '='
+    parser_add_error(parser, "expected attribute value after '='");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -286,10 +301,27 @@ static int parse_attribute_quoted_value(struct parser_t *parser, struct token_re
     parser_append_ref(&parser->attribute.value, ref);
   }
   else if(ref->type == TOKEN_ATTRIBUTE_QUOTED_VALUE_END) {
-    parser->context = PARSER_TAG;
+    parser->context = PARSER_SPACE_AFTER_ATTRIBUTE;
   }
   else {
-    // expected end of quoted value
+    // not reachable
+    rb_raise(rb_eArgError, "expected end-quote after quoted value");
+  }
+
+  PARSE_DONE;
+}
+
+static int parse_space_after_attribute(struct parser_t *parser, struct token_reference_t *ref)
+{
+  if(ref->type == TOKEN_WHITESPACE) {
+    parser->context = PARSER_TAG;
+  }
+  else if(ref->type == TOKEN_TAG_END) {
+    parser->context = PARSER_TAG;
+    PARSE_AGAIN;
+  }
+  else {
+    parser_add_error(parser, "expected space after attribute value");
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -302,9 +334,16 @@ static int parse_attribute_unquoted_value(struct parser_t *parser, struct token_
   if(ref->type == TOKEN_ATTRIBUTE_UNQUOTED_VALUE) {
     parser_append_ref(&parser->attribute.value, ref);
   }
-  else {
+  else if(ref->type == TOKEN_WHITESPACE) {
+    parser->context = PARSER_TAG;
+  }
+  else if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
+  }
+  else {
+    // not reachable
+    rb_raise(rb_eArgError, "expected space or end-of-tag after unquoted value");
   }
 
   PARSE_DONE;
@@ -352,8 +391,6 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
       INT2NUM(ref.line_number), INT2NUM(ref.column_number));
   }
 
-  parser_adjust_line_number(parser, ref.start, ref.length);
-
   while(parse_again) {
     switch(parser->context)
     {
@@ -384,6 +421,9 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
     case PARSER_ATTRIBUTE_QUOTED_VALUE:
       parse_again = parse_attribute_quoted_value(parser, &ref);
       break;
+    case PARSER_SPACE_AFTER_ATTRIBUTE:
+      parse_again = parse_space_after_attribute(parser, &ref);
+      break;
     case PARSER_ATTRIBUTE_UNQUOTED_VALUE:
       parse_again = parse_attribute_unquoted_value(parser, &ref);
       break;
@@ -398,6 +438,8 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
       break;
     }
   }
+
+  parser_adjust_line_number(parser, ref.start, ref.length);
 
   return;
 }
@@ -423,8 +465,8 @@ static VALUE parser_initialize_method(VALUE self)
   parser->doc.line_number = 1;
   parser->doc.column_number = 0;
 
-  parser->errors.count = 0;
-  parser->errors.messages = NULL;
+  parser->errors_count = 0;
+  parser->errors = NULL;
 
   return Qnil;
 }
@@ -525,6 +567,8 @@ static VALUE parser_context_method(VALUE self)
     return ID2SYM(rb_intern("after_equal"));
   case PARSER_ATTRIBUTE_QUOTED_VALUE:
     return ID2SYM(rb_intern("quoted_value"));
+  case PARSER_SPACE_AFTER_ATTRIBUTE:
+    return ID2SYM(rb_intern("space_after_attribute"));
   case PARSER_ATTRIBUTE_UNQUOTED_VALUE:
     return ID2SYM(rb_intern("unquoted_value"));
   case PARSER_TAG_END:
@@ -631,6 +675,42 @@ static VALUE parser_extract_method(VALUE self, VALUE start_p, VALUE end_p)
   return ref_to_str(parser, &ref);
 }
 
+static VALUE parser_errors_count_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return INT2NUM(parser->errors_count);
+}
+
+static VALUE create_parser_error(struct parser_document_error_t *error)
+{
+  VALUE module = rb_const_get(rb_cObject, rb_intern("HtmlTokenizer"));
+  VALUE klass = rb_const_get(module, rb_intern("ParserError"));
+  VALUE args[3] = {
+    rb_str_new2(error->message),
+    ULONG2NUM(error->line_number),
+    ULONG2NUM(error->column_number),
+  };
+  return rb_class_new_instance(3, args, klass);
+}
+
+static VALUE parser_errors_method(VALUE self, VALUE error_p)
+{
+  struct parser_t *parser = NULL;
+  VALUE list;
+  size_t i;
+  Parser_Get_Struct(self, parser);
+
+  list = rb_ary_new();
+  for(i=0; i<parser->errors_count; i++) {
+    if(parser->errors[i].message) {
+      rb_ary_push(list, create_parser_error(&parser->errors[i]));
+    }
+  }
+
+  return list;
+}
+
 void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
 {
   cParser = rb_define_class_under(mHtmlTokenizer, "Parser", rb_cObject);
@@ -640,6 +720,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "document_length", parser_document_length_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);
   rb_define_method(cParser, "append_placeholder", parser_append_placeholder_method, 1);
+  rb_define_method(cParser, "extract", parser_extract_method, 2);
   rb_define_method(cParser, "context", parser_context_method, 0);
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);
   rb_define_method(cParser, "closing_tag?", parser_closing_tag_method, 0);
@@ -650,5 +731,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);
   rb_define_method(cParser, "cdata_text", parser_cdata_text_method, 0);
   rb_define_method(cParser, "rawtext_text", parser_rawtext_text_method, 0);
-  rb_define_method(cParser, "extract", parser_extract_method, 2);
+
+  rb_define_method(cParser, "errors_count", parser_errors_count_method, 0);
+  rb_define_method(cParser, "errors", parser_errors_method, 0);
 }

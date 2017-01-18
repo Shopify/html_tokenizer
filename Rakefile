@@ -6,7 +6,7 @@ require 'rake/testtask'
 require 'bundler/gem_tasks'
 require 'rake/extensiontask'
 
-Rake::ExtensionTask.new("html_tokenizer")
+Rake::ExtensionTask.new("html_tokenizer_ext")
 
 task :default => :test
 

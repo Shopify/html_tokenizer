@@ -10,15 +10,17 @@ enum parser_context {
   PARSER_ATTRIBUTE_WHITESPACE_OR_EQUAL,
   PARSER_ATTRIBUTE_WHITESPACE_OR_VALUE,
   PARSER_ATTRIBUTE_QUOTED_VALUE,
+  PARSER_SPACE_AFTER_ATTRIBUTE,
   PARSER_ATTRIBUTE_UNQUOTED_VALUE,
   PARSER_TAG_END,
   PARSER_COMMENT,
   PARSER_CDATA,
 };
 
-struct parser_document_errors_t {
-  size_t count;
-  char **messages;
+struct parser_document_error_t {
+  char *message;
+  long unsigned int line_number;
+  long unsigned int column_number;
 };
 
 struct parser_document_t {
@@ -64,7 +66,9 @@ struct parser_t
   struct tokenizer_t tk;
 
   struct parser_document_t doc;
-  struct parser_document_errors_t errors;
+
+  size_t errors_count;
+  struct parser_document_error_t *errors;
 
   enum parser_context context;
   struct parser_tag_t tag;

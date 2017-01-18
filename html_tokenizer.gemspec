@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir.glob("ext/**/*.{c,h,rb}") +
             Dir.glob("lib/**/*.rb")
 
-  spec.extensions    = ['ext/html_tokenizer/extconf.rb']
+  spec.extensions    = ['ext/html_tokenizer_ext/extconf.rb']
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})

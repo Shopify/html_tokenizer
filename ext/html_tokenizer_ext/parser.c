@@ -166,10 +166,13 @@ static int parse_tag_name(struct parser_t *parser, struct token_reference_t *ref
   else if(ref->type == TOKEN_TAG_END) {
     parser->context = PARSER_NONE;
   }
-  else {
-    parser_add_error(parser, "expected whitespace or tag end");
+  else if(ref->type == TOKEN_SOLIDUS) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
+  }
+  else {
+    // not reachable
+    rb_raise(rb_eArgError, "expected whitespace, '/' or '>' after tag name");
   }
   PARSE_DONE;
 }
@@ -200,7 +203,7 @@ static int parse_tag(struct parser_t *parser, struct token_reference_t *ref)
   }
   else {
     // unexpected
-    parser_add_error(parser, "expected whitespace, tag end, attribute name or value");
+    parser_add_error(parser, "expected whitespace, '>', attribute name or value");
   }
   PARSE_DONE;
 }
@@ -224,7 +227,7 @@ static int parse_attribute_name(struct parser_t *parser, struct token_reference_
   if(ref->type == TOKEN_ATTRIBUTE_NAME) {
     parser_append_ref(&parser->attribute.name, ref);
   }
-  else if(ref->type == TOKEN_TAG_END) {
+  else if(ref->type == TOKEN_TAG_END || ref->type == TOKEN_SOLIDUS) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -266,8 +269,9 @@ static int parse_attribute_whitespace_or_equal(struct parser_t *parser, struct t
     PARSE_AGAIN;
   }
   else {
-    // not reachable
-    rb_raise(rb_eArgError, "expected '/', '>', \", ' or '=' after attribute name");
+    parser_add_error(parser, "expected '/', '>', \", ' or '=' after attribute name");
+    parser->context = PARSER_TAG;
+    PARSE_AGAIN;
   }
 
   PARSE_DONE;
@@ -316,7 +320,7 @@ static int parse_space_after_attribute(struct parser_t *parser, struct token_ref
   if(ref->type == TOKEN_WHITESPACE) {
     parser->context = PARSER_TAG;
   }
-  else if(ref->type == TOKEN_TAG_END) {
+  else if(ref->type == TOKEN_TAG_END || ref->type == TOKEN_SOLIDUS) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }
@@ -337,7 +341,7 @@ static int parse_attribute_unquoted_value(struct parser_t *parser, struct token_
   else if(ref->type == TOKEN_WHITESPACE) {
     parser->context = PARSER_TAG;
   }
-  else if(ref->type == TOKEN_TAG_END) {
+  else if(ref->type == TOKEN_TAG_END || ref->type == TOKEN_SOLIDUS) {
     parser->context = PARSER_TAG;
     PARSE_AGAIN;
   }

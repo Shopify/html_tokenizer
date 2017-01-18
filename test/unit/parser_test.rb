@@ -459,18 +459,10 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal 1, @parser.errors.first.column
   end
 
-  def test_tag_name_error
-    parse('<foo/')
-    assert_equal 1, @parser.errors_count
-    assert_equal "expected whitespace or tag end", @parser.errors.first.to_s
-    assert_equal 1, @parser.errors.first.line
-    assert_equal 4, @parser.errors.first.column
-  end
-
   def test_tag_error
     parse('<foo =')
     assert_equal 1, @parser.errors_count
-    assert_equal "expected whitespace, tag end, attribute name or value", @parser.errors.first.to_s
+    assert_equal "expected whitespace, '>', attribute name or value", @parser.errors.first.to_s
     assert_equal 1, @parser.errors.first.line
     assert_equal 5, @parser.errors.first.column
   end
@@ -492,19 +484,25 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   end
 
   def test_attribute_name_error
-    parse('<foo bar/')
-    assert_equal 1, @parser.errors_count
+    parse('<foo bar~')
+    assert_equal 2, @parser.errors_count
     assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors.first.to_s
     assert_equal 1, @parser.errors.first.line
     assert_equal 8, @parser.errors.first.column
+    assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors[0].to_s
+    assert_equal 1, @parser.errors[0].line
+    assert_equal 8, @parser.errors[0].column
   end
 
   def test_attribute_whitespace_or_equal_error
-    parse('<foo bar/')
-    assert_equal 1, @parser.errors_count
-    assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors.first.to_s
+    parse('<foo bar ~')
+    assert_equal 2, @parser.errors_count
+    assert_equal "expected '/', '>', \", ' or '=' after attribute name", @parser.errors.first.to_s
     assert_equal 1, @parser.errors.first.line
-    assert_equal 8, @parser.errors.first.column
+    assert_equal 9, @parser.errors.first.column
+    assert_equal "expected '/', '>', \", ' or '=' after attribute name", @parser.errors[0].to_s
+    assert_equal 1, @parser.errors[0].line
+    assert_equal 9, @parser.errors[0].column
   end
 
   def test_attribute_whitespace_or_equal_error_2
@@ -527,25 +525,30 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse(
       '<div>',
       '<div />',
+      '<div/>',
       '<div data-thing>',
       '<div data-thing />',
+      '<div data-thing/>',
       '<div "value">',
       '<div "value" />',
+      '<div "value"/>',
       '<div data-thing   =   "value">',
       '<div data-thing="value">',
-      '<div data-thing="value" />',
+      '<div data-thing="value"/>',
       '<div data-thing data-other-thing="value">',
-      '<div data-thing data-other-thing="value" />',
+      '<div data-thing data-other-thing="value"/>',
       "<div \n\t\r data-thing \n\t\r data-other-thing='value'>",
       '<div data-thing "value">',
+      '<div data-thing "value"/>',
       '<div data-thing "value" />',
       '<div "value" data-thing>',
-      '<div "value" data-thing />',
+      '<div "value" data-thing/>',
+      '<div foo=unquoted=bla/>',
       '<div foo=unquoted=bla />',
       '<div foo=unquoted=bla>',
       '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
     )
-    assert_equal 0, @parser.errors_count
+    assert_equal 0, @parser.errors_count, "Expected no errors: #{@parser.errors}"
   end
 
   private

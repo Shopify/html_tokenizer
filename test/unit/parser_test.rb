@@ -507,7 +507,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal 8, @parser.errors.first.column
   end
 
-  def test_attribute_whitespace_or_equal_error
+  def test_attribute_whitespace_or_equal_error_2
     parse('<foo bar = >')
     assert_equal 1, @parser.errors_count
     assert_equal "expected attribute value after '='", @parser.errors.first.to_s

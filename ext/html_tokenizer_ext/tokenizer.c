@@ -303,8 +303,8 @@ static int is_comment_end(struct scan_t *scan, unsigned long int *length, const 
   long unsigned int i;
 
   *length = 0;
-  for(i = scan->cursor;i < (scan->length - 2); i++, (*length)++) {
-    if(scan->string[i] == '-' && scan->string[i+1] == '-' &&
+  for(i = scan->cursor;i < scan->length; i++, (*length)++) {
+    if(i < (scan->length - 2) && scan->string[i] == '-' && scan->string[i+1] == '-' &&
         scan->string[i+2] == '>') {
       *end = &scan->string[i];
       break;
@@ -318,8 +318,8 @@ static int is_cdata_end(struct scan_t *scan, unsigned long int *length, const ch
   long unsigned int i;
 
   *length = 0;
-  for(i = scan->cursor;i < (scan->length - 2); i++, (*length)++) {
-    if(scan->string[i] == ']' && scan->string[i+1] == ']' &&
+  for(i = scan->cursor;i < scan->length; i++, (*length)++) {
+    if(i < (scan->length-2) && scan->string[i] == ']' && scan->string[i+1] == ']' &&
         scan->string[i+2] == '>') {
       *end = &scan->string[i];
       break;

@@ -72,6 +72,18 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     assert_equal [[:cdata_start, "<![CDATA["], [:text, "  bla bla <!&@#> foo "], [:cdata_end, "]]>"]], result
   end
 
+  def test_tokenizer_cdata_regression
+    result = tokenize("<![CDATA[ foo ", " baz ]]>")
+    assert_equal [[:cdata_start, "<![CDATA["],
+      [:text, " foo "], [:text, " baz "], [:cdata_end, "]]>"]], result
+  end
+
+  def test_tokenizer_comment_regression
+    result = tokenize("<!-- foo ", " baz -->")
+    assert_equal [[:comment_start, "<!--"],
+      [:text, " foo "], [:text, " baz "], [:comment_end, "-->"]], result
+  end
+
   def test_tokenize_basic_tag
     result = tokenize("<div>")
     assert_equal [[:tag_start, "<"], [:tag_name, "div"], [:tag_end, ">"]], result

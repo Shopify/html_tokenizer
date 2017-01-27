@@ -534,8 +534,10 @@ static int scan_comment(struct tokenizer_t *tk)
 
   if(is_comment_end(&tk->scan, &length, &comment_end)) {
     tokenizer_callback(tk, TOKEN_TEXT, length);
-    if(comment_end)
+    if(comment_end) {
       tokenizer_callback(tk, TOKEN_COMMENT_END, 3);
+      pop_context(tk); // back to document
+    }
     return 1;
   }
   else {

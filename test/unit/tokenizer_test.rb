@@ -84,6 +84,12 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
       [:text, " foo "], [:text, " baz "], [:comment_end, "-->"]], result
   end
 
+  def test_tokenizer_parse_tag_after_comment_regression
+    result = tokenize("<!-- foo -->  <li>")
+    assert_equal [[:comment_start, "<!--"], [:text, " foo "], [:comment_end, "-->"],
+      [:text, "  "], [:tag_start, "<"], [:tag_name, "li"], [:tag_end, ">"]], result
+  end
+
   def test_tokenize_basic_tag
     result = tokenize("<div>")
     assert_equal [[:tag_start, "<"], [:tag_name, "div"], [:tag_end, ">"]], result

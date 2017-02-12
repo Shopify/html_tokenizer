@@ -18,10 +18,12 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<div "foo')
     assert_equal :quoted_value, @parser.context
     assert_equal 'foo', @parser.attribute_value
+    assert_equal '"', @parser.quote_character
     parse('bar"')
     assert_equal :space_after_attribute, @parser.context
     assert_equal 'foobar', @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
+    assert_equal '"', @parser.quote_character
   end
 
   def test_multi_part_namespace_tag
@@ -98,6 +100,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_nil @parser.attribute_name
     assert_equal 'foo', @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
+    assert_equal '"', @parser.quote_character
     assert_equal :none, @parser.context
     assert_equal false, @parser.closing_tag?
     assert_equal false, @parser.self_closing_tag?
@@ -118,6 +121,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_nil @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
+    assert_equal "'", @parser.quote_character
     assert_equal :quoted_value, @parser.context
   end
 
@@ -125,6 +129,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse("<div foo='")
     assert_nil @parser.attribute_value
     assert_equal true, @parser.attribute_quoted?
+    assert_equal "'", @parser.quote_character
     assert_equal :quoted_value, @parser.context
   end
 
@@ -141,6 +146,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "/", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :unquoted_value, @parser.context
   end
 
@@ -163,6 +169,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "/bar", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :unquoted_value, @parser.context
   end
 
@@ -175,6 +182,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "baz", @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :attribute_name, @parser.context
   end
 
@@ -183,6 +191,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :unquoted_value, @parser.context
   end
 
@@ -191,6 +200,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :none, @parser.context
   end
 
@@ -199,6 +209,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar/baz", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :unquoted_value, @parser.context
   end
 
@@ -207,6 +218,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "baz", @parser.attribute_name
     assert_nil @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :attribute_name, @parser.context
   end
 
@@ -215,6 +227,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal "foo", @parser.attribute_name
     assert_equal "bar&baz", @parser.attribute_value
     assert_equal false, @parser.attribute_quoted?
+    assert_nil @parser.quote_character
     assert_equal :unquoted_value, @parser.context
   end
 

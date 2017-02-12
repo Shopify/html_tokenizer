@@ -628,6 +628,15 @@ static VALUE parser_attribute_value_method(VALUE self)
   return ref_to_str(parser, &parser->attribute.value);
 }
 
+static VALUE parser_quote_character_method(VALUE self)
+{
+  struct parser_t *parser = NULL;
+  Parser_Get_Struct(self, parser);
+  return parser->attribute.is_quoted ?
+    rb_str_new(&parser->tk.attribute_value_start, 1) :
+    Qnil;
+}
+
 static VALUE parser_attribute_is_quoted_method(VALUE self)
 {
   struct parser_t *parser = NULL;
@@ -747,6 +756,7 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "self_closing_tag?", parser_self_closing_tag_method, 0);
   rb_define_method(cParser, "attribute_name", parser_attribute_name_method, 0);
   rb_define_method(cParser, "attribute_value", parser_attribute_value_method, 0);
+  rb_define_method(cParser, "quote_character", parser_quote_character_method, 0);
   rb_define_method(cParser, "attribute_quoted?", parser_attribute_is_quoted_method, 0);
   rb_define_method(cParser, "comment_text", parser_comment_text_method, 0);
   rb_define_method(cParser, "cdata_text", parser_cdata_text_method, 0);

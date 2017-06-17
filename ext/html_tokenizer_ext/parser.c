@@ -389,12 +389,6 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
   };
   int parse_again = 1;
 
-  if(rb_block_given_p()) {
-    rb_yield_values(5, token_type_to_symbol(type),
-      INT2NUM(ref.start), INT2NUM(ref.start + ref.length),
-      INT2NUM(ref.line_number), INT2NUM(ref.column_number));
-  }
-
   while(parse_again) {
     switch(parser->context)
     {
@@ -441,6 +435,12 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
       parse_again = parse_comment(parser, &ref);
       break;
     }
+  }
+
+  if(rb_block_given_p()) {
+    rb_yield_values(5, token_type_to_symbol(type),
+      INT2NUM(ref.start), INT2NUM(ref.start + ref.length),
+      INT2NUM(ref.line_number), INT2NUM(ref.column_number));
   }
 
   parser_adjust_line_number(parser, ref.start, ref.length);

@@ -351,7 +351,7 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     tokens = []
     @tokenizer = HtmlTokenizer::Tokenizer.new
     parts.each do |part|
-      @tokenizer.tokenize(part) { |name, start, stop| tokens << [name, part[start..(stop-1)]] }
+      @tokenizer.tokenize(part) { |name, start, stop| tokens << [name, part[start...stop]] }
     end
     tokens
   end

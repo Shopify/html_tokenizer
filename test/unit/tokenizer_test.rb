@@ -324,6 +324,23 @@ class HtmlTokenizer::TokenizerTest < Minitest::Test
     ], result
   end
 
+  def test_html_with_mutlibyte_characters
+    data = "<div title='your store’s'>foo"
+    result = tokenize(data)
+    assert_equal [
+      [:tag_start, "<"],
+      [:tag_name, "div"],
+      [:whitespace, " "],
+      [:attribute_name, "title"],
+      [:equal, "="],
+      [:attribute_quoted_value_start, "'"],
+      [:attribute_quoted_value, "your store’s"],
+      [:attribute_quoted_value_end, "'"],
+      [:tag_end, ">"],
+      [:text, "foo"]
+    ], result
+  end
+
   private
 
   def tokenize(*parts)

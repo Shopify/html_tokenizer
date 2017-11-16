@@ -534,6 +534,17 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal 11, @parser.errors.first.column
   end
 
+  def test_attribute_with_mutlibyte_characters
+    data = "<div title='your store’s'>"
+    parse(data)
+    assert_equal "div", @parser.tag_name
+    assert_equal "title", @parser.attribute_name
+    assert_equal "your store’s", @parser.attribute_value
+    assert_equal data, @parser.document
+    assert_equal data.size, @parser.document_length
+    assert_equal data.size, @parser.column_number
+  end
+
   def test_valid_syntaxes
     parse(
       '<div>',

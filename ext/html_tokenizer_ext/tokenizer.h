@@ -43,6 +43,9 @@ struct scan_t {
   char *string;
   long unsigned int cursor;
   long unsigned int length;
+
+  int enc_index;
+  long unsigned int enc_cursor;
 };
 
 struct tokenizer_t

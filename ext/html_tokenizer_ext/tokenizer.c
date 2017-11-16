@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include "html_tokenizer.h"
 #include "tokenizer.h"
 
@@ -60,6 +61,8 @@ void tokenizer_init(struct tokenizer_t *tk)
   tk->scan.string = NULL;
   tk->scan.cursor = 0;
   tk->scan.length = 0;
+  tk->scan.enc_cursor = 0;
+  tk->scan.enc_index = 0;
 
   tk->attribute_value_start = 0;
   tk->found_attribute = 0;
@@ -115,17 +118,27 @@ VALUE token_type_to_symbol(enum token_type type)
   return Qnil;
 }
 
+static long unsigned int tokenizer_mblength(struct tokenizer_t *tk, long unsigned int length)
+{
+  rb_encoding *enc = rb_enc_from_index(tk->scan.enc_index);
+  const char *buf = tk->scan.string + tk->scan.cursor;
+  return rb_enc_strlen(buf, buf + length, enc);
+}
+
 static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, long unsigned int length, void *data)
 {
+  long unsigned int mb_length = tokenizer_mblength(tk, length);
   tk->last_token = type;
-  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.cursor), INT2NUM(tk->scan.cursor + length));
+  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.enc_cursor), INT2NUM(tk->scan.enc_cursor + mb_length));
 }
 
 static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, long unsigned int length)
 {
+  long unsigned int mb_length = tokenizer_mblength(tk, length);
   if(tk->f_callback)
     tk->f_callback(tk, type, length, tk->callback_data);
   tk->scan.cursor += length;
+  tk->scan.enc_cursor += mb_length;
 }
 
 static VALUE tokenizer_initialize_method(VALUE self)
@@ -657,6 +670,8 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   c_source = StringValueCStr(source);
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
+  tk->scan.enc_index = rb_enc_get_index(source);
+  tk->scan.enc_cursor = 0;
 
   old = tk->scan.string;
   REALLOC_N(tk->scan.string, char, tk->scan.length+1);

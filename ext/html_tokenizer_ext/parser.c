@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include "html_tokenizer.h"
 #include "parser.h"
 
@@ -360,17 +361,34 @@ static inline int rawtext_context(struct parser_t *parser)
       ctx == TOKENIZER_SCRIPT_DATA || ctx == TOKENIZER_PLAINTEXT);
 }
 
-static void parser_adjust_line_number(struct parser_t *parser, long unsigned int start, long unsigned int length)
+static inline const char *find_next_newline(const char *buf, long unsigned int length)
 {
   long unsigned int i;
 
-  for(i = start;i < (start + length); i++) {
-    if(parser->doc.data[i] == '\n') {
+  for(i = 0; i < length; i++) {
+    if(*(buf + i) == '\n')
+      return buf + i;
+  }
+  return NULL;
+}
+
+static void parser_adjust_line_number(struct parser_t *parser, long unsigned int start, long unsigned int length)
+{
+  rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
+  long unsigned int i;
+  const char *buf, *nextlf;
+
+  for(i = 0; i < length;) {
+    buf = &parser->doc.data[start + i];
+    nextlf = find_next_newline(buf, length - i);
+    if(nextlf) {
       parser->doc.column_number = 0;
       parser->doc.line_number += 1;
+      i += (nextlf - buf) + 1;
     }
     else {
-      parser->doc.column_number += 1;
+      parser->doc.column_number += rb_enc_strlen(buf, buf + length - i, enc);
+      break;
     }
   }
 
@@ -465,6 +483,7 @@ static VALUE parser_initialize_method(VALUE self)
 
   parser->doc.length = 0;
   parser->doc.data = NULL;
+  parser->doc.enc_index = 0;
 
   parser->doc.line_number = 1;
   parser->doc.column_number = 0;
@@ -503,6 +522,14 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
 
   cursor = parser->doc.length;
 
+  if(parser->doc.data == NULL) {
+    parser->doc.enc_index = rb_enc_get_index(source);
+  }
+  else if(parser->doc.enc_index != rb_enc_get_index(source)) {
+    rb_raise(rb_eArgError, "cannot append %s string to %s document",
+      rb_enc_name(rb_enc_get(source)), rb_enc_name(rb_enc_from_index(parser->doc.enc_index)));
+  }
+
   if(!parser_document_append(parser, string, length)) {
     // error
     return Qnil;
@@ -535,17 +562,30 @@ static VALUE parser_append_placeholder_method(VALUE self, VALUE source)
 static VALUE parser_document_method(VALUE self)
 {
   struct parser_t *parser = NULL;
+  rb_encoding *enc;
   Parser_Get_Struct(self, parser);
   if(!parser->doc.data)
     return Qnil;
-  return rb_str_new(parser->doc.data, parser->doc.length);
+  enc = rb_enc_from_index(parser->doc.enc_index);
+  return rb_enc_str_new(parser->doc.data, parser->doc.length, enc);
 }
 
 static VALUE parser_document_length_method(VALUE self)
 {
   struct parser_t *parser = NULL;
+  rb_encoding *enc;
+  const char *buf;
+
   Parser_Get_Struct(self, parser);
-  return ULONG2NUM(parser->doc.length);
+
+  if(parser->doc.data == NULL) {
+    return ULONG2NUM(0);
+  }
+  else {
+    buf = parser->doc.data;
+    enc = rb_enc_from_index(parser->doc.enc_index);
+    return ULONG2NUM(rb_enc_strlen(buf, buf + parser->doc.length, enc));
+  }
 }
 
 static VALUE parser_context_method(VALUE self)
@@ -588,9 +628,10 @@ static VALUE parser_context_method(VALUE self)
 
 static inline VALUE ref_to_str(struct parser_t *parser, struct token_reference_t *ref)
 {
+  rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
   if(ref->type == TOKEN_NONE || parser->doc.data == NULL)
     return Qnil;
-  return rb_str_new(parser->doc.data+ref->start, ref->length);
+  return rb_enc_str_new(parser->doc.data+ref->start, ref->length, enc);
 }
 
 static VALUE parser_tag_name_method(VALUE self)

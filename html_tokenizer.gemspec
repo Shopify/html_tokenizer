@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name    = "html_tokenizer"
-  spec.version = "0.0.1"
+  spec.version = "0.0.2"
   spec.summary = "HTML Tokenizer"
   spec.author  = "Francois Chagnon"
 

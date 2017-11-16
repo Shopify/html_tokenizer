@@ -61,7 +61,7 @@ void tokenizer_init(struct tokenizer_t *tk)
   tk->scan.string = NULL;
   tk->scan.cursor = 0;
   tk->scan.length = 0;
-  tk->scan.enc_cursor = 0;
+  tk->scan.mb_cursor = 0;
   tk->scan.enc_index = 0;
 
   tk->attribute_value_start = 0;
@@ -129,7 +129,7 @@ static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, lo
 {
   long unsigned int mb_length = tokenizer_mblength(tk, length);
   tk->last_token = type;
-  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.enc_cursor), INT2NUM(tk->scan.enc_cursor + mb_length));
+  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.mb_cursor), INT2NUM(tk->scan.mb_cursor + mb_length));
 }
 
 static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, long unsigned int length)
@@ -138,7 +138,7 @@ static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, lon
   if(tk->f_callback)
     tk->f_callback(tk, type, length, tk->callback_data);
   tk->scan.cursor += length;
-  tk->scan.enc_cursor += mb_length;
+  tk->scan.mb_cursor += mb_length;
 }
 
 static VALUE tokenizer_initialize_method(VALUE self)
@@ -671,7 +671,7 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
   tk->scan.cursor = 0;
   tk->scan.length = strlen(c_source);
   tk->scan.enc_index = rb_enc_get_index(source);
-  tk->scan.enc_cursor = 0;
+  tk->scan.mb_cursor = 0;
 
   old = tk->scan.string;
   REALLOC_N(tk->scan.string, char, tk->scan.length+1);

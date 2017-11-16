@@ -45,7 +45,7 @@ struct scan_t {
   long unsigned int length;
 
   int enc_index;
-  long unsigned int enc_cursor;
+  long unsigned int mb_cursor;
 };
 
 struct tokenizer_t

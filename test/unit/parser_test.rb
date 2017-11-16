@@ -431,29 +431,6 @@ class HtmlTokenizer::ParserTest < Minitest::Test
       tokens << token
     end
     assert_equal [[:text, 0, 4, 1, 0], [:text, 34, 38, 5, 0]], tokens
-    assert_equal "bar\n", @parser.extract(34, 38)
-  end
-
-  def test_extract_method
-    parse("abcdefg")
-    assert_equal "a", @parser.extract(0, 1)
-    assert_equal "cd", @parser.extract(2, 4)
-  end
-
-  def test_extract_method_raises_argument_error_end_past_length
-    parse("abcdefg")
-    e = assert_raises(ArgumentError) do
-      @parser.extract(0, 32)
-    end
-    assert_equal "'end' argument not in range of document", e.message
-  end
-
-  def test_extract_method_raises_argument_error_end_less_than_start
-    parse("abcdefg")
-    e = assert_raises(ArgumentError) do
-      @parser.extract(1, 0)
-    end
-    assert_equal "'end' must be greater or equal than 'start'", e.message
   end
 
   def test_solidus_or_tag_name_error
@@ -536,13 +513,25 @@ class HtmlTokenizer::ParserTest < Minitest::Test
 
   def test_attribute_with_mutlibyte_characters
     data = "<div title='your store’s'>"
-    parse(data)
+    tokens = []
+    parse(data) { |name, start, stop| tokens << [name, start, stop, data[start...stop]] }
     assert_equal "div", @parser.tag_name
     assert_equal "title", @parser.attribute_name
     assert_equal "your store’s", @parser.attribute_value
     assert_equal data, @parser.document
     assert_equal data.size, @parser.document_length
     assert_equal data.size, @parser.column_number
+    assert_equal [
+      [:tag_start, 0, 1, "<"],
+      [:tag_name, 1, 4, "div"],
+      [:whitespace, 4, 5, " "],
+      [:attribute_name, 5, 10, "title"],
+      [:equal, 10, 11, "="],
+      [:attribute_quoted_value_start, 11, 12, "'"],
+      [:attribute_quoted_value, 12, 24, "your store’s"],
+      [:attribute_quoted_value_end, 24, 25, "'"],
+      [:tag_end, 25, 26, ">"],
+    ], tokens
   end
 
   def test_valid_syntaxes

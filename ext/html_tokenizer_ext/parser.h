@@ -28,12 +28,15 @@ struct parser_document_t {
   char *data;
   long unsigned int line_number;
   long unsigned int column_number;
+
   int enc_index;
+  long unsigned int mb_length;
 };
 
 struct token_reference_t {
   enum token_type type;
   long unsigned int start;
+  long unsigned int mb_start;
   long unsigned int length;
   long unsigned int line_number;
   long unsigned int column_number;

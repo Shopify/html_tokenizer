@@ -512,15 +512,15 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   end
 
   def test_attribute_with_mutlibyte_characters
-    data = "<div title='your store’s'>"
+    data = ["<div title", "='your store’s'>"]
     tokens = []
-    parse(data) { |name, start, stop| tokens << [name, start, stop, data[start...stop]] }
+    parse(*data) { |name, start, stop| tokens << [name, start, stop, data.join[start...stop]] }
     assert_equal "div", @parser.tag_name
     assert_equal "title", @parser.attribute_name
     assert_equal "your store’s", @parser.attribute_value
-    assert_equal data, @parser.document
-    assert_equal data.size, @parser.document_length
-    assert_equal data.size, @parser.column_number
+    assert_equal data.join, @parser.document
+    assert_equal data.join.size, @parser.document_length
+    assert_equal data.join.size, @parser.column_number
     assert_equal [
       [:tag_start, 0, 1, "<"],
       [:tag_name, 1, 4, "div"],

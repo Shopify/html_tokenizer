@@ -504,13 +504,17 @@ static VALUE parser_initialize_method(VALUE self)
 static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
   void *old = parser->doc.data;
+  unsigned long int mb_length;
+  char *buf;
   rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
   REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
   DBG_PRINT("parser=%p realloc(parser->doc.data) %p -> %p length=%lu", parser, old,
-    parser->doc.data,  parser->doc.length + length + 1);
-  strcpy(parser->doc.data+parser->doc.length, string);
+    parser->doc.data, parser->doc.length + length + 1);
+  buf = parser->doc.data + parser->doc.length;
+  strcpy(buf, string);
+  mb_length = rb_enc_strlen(buf, buf + length, enc);
   parser->doc.length += length;
-  parser->doc.mb_length += rb_enc_strlen(parser->doc.data, parser->doc.data + length, enc);
+  parser->doc.mb_length += mb_length;
   return 1;
 }
 

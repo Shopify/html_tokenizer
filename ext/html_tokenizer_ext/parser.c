@@ -362,17 +362,6 @@ static inline int rawtext_context(struct parser_t *parser)
       ctx == TOKENIZER_SCRIPT_DATA || ctx == TOKENIZER_PLAINTEXT);
 }
 
-static inline const char *find_next_newline(const char *buf, long unsigned int length)
-{
-  long unsigned int i;
-
-  for(i = 0; i < length; i++) {
-    if(*(buf + i) == '\n')
-      return buf + i;
-  }
-  return NULL;
-}
-
 static void parser_adjust_line_number(struct parser_t *parser, long unsigned int start, long unsigned int length)
 {
   rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
@@ -381,7 +370,7 @@ static void parser_adjust_line_number(struct parser_t *parser, long unsigned int
 
   for(i = 0; i < length;) {
     buf = &parser->doc.data[start + i];
-    nextlf = find_next_newline(buf, length - i);
+    nextlf = memchr(buf, '\n', length - i);
     if(nextlf) {
       parser->doc.column_number = 0;
       parser->doc.line_number += 1;

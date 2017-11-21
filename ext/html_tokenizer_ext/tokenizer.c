@@ -369,6 +369,7 @@ static int scan_open_tag(struct tokenizer_t *tk)
   else if(is_doctype(&tk->scan)) {
     tokenizer_callback(tk, TOKEN_TAG_START, 1);
     tokenizer_callback(tk, TOKEN_TAG_NAME, 8);
+    push_context(tk, TOKENIZER_TAG_NAME);
     return 1;
   }
   else if(is_cdata_start(&tk->scan)) {

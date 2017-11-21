@@ -564,6 +564,15 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     assert_equal 0, @parser.errors_count, "Expected no errors: #{@parser.errors}"
   end
 
+  def test_doctype_without_space
+    parse('<!DOCTYPE')
+    assert_equal "!DOCTYPE", @parser.tag_name
+    parse('foo')
+    assert_equal "!DOCTYPEfoo", @parser.tag_name
+
+    assert_equal 0, @parser.errors_count, "Expected no errors: #{@parser.errors}"
+  end
+
   private
 
   def parse(*parts, &block)

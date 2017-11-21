@@ -14,6 +14,7 @@ static void parser_free(void *ptr)
   size_t i;
 
   if(parser) {
+    tokenizer_free_members(&parser->tk);
     if(parser->doc.data) {
       DBG_PRINT("parser=%p xfree(parser->doc.data) %p", parser, parser->doc.data);
       xfree(parser->doc.data);
@@ -549,6 +550,8 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
     parser->tk.scan.mb_cursor = mb_cursor;
 
     tokenizer_scan_all(&parser->tk);
+
+    parser->tk.scan.string = NULL;
   }
 
   return Qtrue;

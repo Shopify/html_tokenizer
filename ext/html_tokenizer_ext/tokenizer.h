@@ -70,6 +70,7 @@ struct tokenizer_t
 
 void Init_html_tokenizer_tokenizer(VALUE mHtmlTokenizer);
 void tokenizer_init(struct tokenizer_t *tk);
+void tokenizer_free_members(struct tokenizer_t *tk);
 void tokenizer_scan_all(struct tokenizer_t *tk);
 VALUE token_type_to_symbol(enum token_type type);
 

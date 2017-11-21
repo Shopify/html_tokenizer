@@ -12,16 +12,7 @@ static void tokenizer_free(void *ptr)
 {
   struct tokenizer_t *tk = ptr;
   if(tk) {
-    if(tk->current_tag) {
-      DBG_PRINT("tk=%p xfree(tk->current_tag) %p", tk, tk->current_tag);
-      xfree(tk->current_tag);
-      tk->current_tag = NULL;
-    }
-    if(tk->scan.string) {
-      DBG_PRINT("tk=%p xfree(tk->scan.string) %p", tk, tk->scan.string);
-      xfree(tk->scan.string);
-      tk->scan.string = NULL;
-    }
+    tokenizer_free_members(tk);
     DBG_PRINT("tk=%p xfree(tk)", tk);
     xfree(tk);
   }
@@ -72,6 +63,21 @@ void tokenizer_init(struct tokenizer_t *tk)
   tk->callback_data = NULL;
   tk->f_callback = NULL;
 
+  return;
+}
+
+void tokenizer_free_members(struct tokenizer_t *tk)
+{
+  if(tk->current_tag) {
+    DBG_PRINT("tk=%p xfree(tk->current_tag) %p", tk, tk->current_tag);
+    xfree(tk->current_tag);
+    tk->current_tag = NULL;
+  }
+  if(tk->scan.string) {
+    DBG_PRINT("tk=%p xfree(tk->scan.string) %p", tk, tk->scan.string);
+    xfree(tk->scan.string);
+    tk->scan.string = NULL;
+  }
   return;
 }
 

@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include "html_tokenizer.h"
 #include "parser.h"
 
@@ -65,6 +66,7 @@ static inline void parser_append_ref(struct token_reference_t *dest, struct toke
   if(dest->type == TOKEN_NONE || dest->type != src->type || (dest->start + dest->length) != src->start) {
     dest->type = src->type;
     dest->start = src->start;
+    dest->mb_start = src->mb_start;
     dest->length = src->length;
     dest->line_number = src->line_number;
     dest->column_number = src->column_number;
@@ -362,15 +364,21 @@ static inline int rawtext_context(struct parser_t *parser)
 
 static void parser_adjust_line_number(struct parser_t *parser, long unsigned int start, long unsigned int length)
 {
+  rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
   long unsigned int i;
+  const char *buf, *nextlf;
 
-  for(i = start;i < (start + length); i++) {
-    if(parser->doc.data[i] == '\n') {
+  for(i = 0; i < length;) {
+    buf = &parser->doc.data[start + i];
+    nextlf = memchr(buf, '\n', length - i);
+    if(nextlf) {
       parser->doc.column_number = 0;
       parser->doc.line_number += 1;
+      i += (nextlf - buf) + 1;
     }
     else {
-      parser->doc.column_number += 1;
+      parser->doc.column_number += rb_enc_strlen(buf, buf + length - i, enc);
+      break;
     }
   }
 
@@ -383,11 +391,14 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
   struct token_reference_t ref = {
     .type = type,
     .start = tk->scan.cursor,
+    .mb_start = tk->scan.mb_cursor,
     .length = length,
     .line_number = parser->doc.line_number,
     .column_number = parser->doc.column_number,
   };
   int parse_again = 1;
+  long unsigned int mb_strlen;
+  rb_encoding *enc;
 
   while(parse_again) {
     switch(parser->context)
@@ -438,8 +449,10 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
   }
 
   if(rb_block_given_p()) {
+    enc = rb_enc_from_index(parser->doc.enc_index);
+    mb_strlen = rb_enc_strlen(parser->doc.data + ref.start, parser->doc.data + ref.start + ref.length, enc);
     rb_yield_values(5, token_type_to_symbol(type),
-      INT2NUM(ref.start), INT2NUM(ref.start + ref.length),
+      INT2NUM(ref.mb_start), INT2NUM(ref.mb_start + mb_strlen),
       INT2NUM(ref.line_number), INT2NUM(ref.column_number));
   }
 
@@ -465,6 +478,8 @@ static VALUE parser_initialize_method(VALUE self)
 
   parser->doc.length = 0;
   parser->doc.data = NULL;
+  parser->doc.enc_index = 0;
+  parser->doc.mb_length = 0;
 
   parser->doc.line_number = 1;
   parser->doc.column_number = 0;
@@ -478,11 +493,17 @@ static VALUE parser_initialize_method(VALUE self)
 static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
   void *old = parser->doc.data;
+  unsigned long int mb_length;
+  char *buf;
+  rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
   REALLOC_N(parser->doc.data, char, parser->doc.length + length + 1);
   DBG_PRINT("parser=%p realloc(parser->doc.data) %p -> %p length=%lu", parser, old,
-    parser->doc.data,  parser->doc.length + length + 1);
-  strcpy(parser->doc.data+parser->doc.length, string);
+    parser->doc.data, parser->doc.length + length + 1);
+  buf = parser->doc.data + parser->doc.length;
+  strcpy(buf, string);
+  mb_length = rb_enc_strlen(buf, buf + length, enc);
   parser->doc.length += length;
+  parser->doc.mb_length += mb_length;
   return 1;
 }
 
@@ -490,7 +511,7 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
 {
   struct parser_t *parser = NULL;
   char *string = NULL;
-  long unsigned int length = 0, cursor = 0;
+  long unsigned int length = 0, cursor = 0, mb_cursor = 0;
 
   if(NIL_P(source))
     return Qnil;
@@ -502,6 +523,15 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
   length = strlen(string);
 
   cursor = parser->doc.length;
+  mb_cursor = parser->doc.mb_length;
+
+  if(parser->doc.data == NULL) {
+    parser->doc.enc_index = rb_enc_get_index(source);
+  }
+  else if(parser->doc.enc_index != rb_enc_get_index(source)) {
+    rb_raise(rb_eArgError, "cannot append %s string to %s document",
+      rb_enc_name(rb_enc_get(source)), rb_enc_name(rb_enc_from_index(parser->doc.enc_index)));
+  }
 
   if(!parser_document_append(parser, string, length)) {
     // error
@@ -515,6 +545,8 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
     parser->tk.scan.cursor = cursor;
     parser->tk.scan.string = parser->doc.data;
     parser->tk.scan.length = parser->doc.length;
+    parser->tk.scan.enc_index = parser->doc.enc_index;
+    parser->tk.scan.mb_cursor = mb_cursor;
 
     tokenizer_scan_all(&parser->tk);
   }
@@ -535,17 +567,30 @@ static VALUE parser_append_placeholder_method(VALUE self, VALUE source)
 static VALUE parser_document_method(VALUE self)
 {
   struct parser_t *parser = NULL;
+  rb_encoding *enc;
   Parser_Get_Struct(self, parser);
   if(!parser->doc.data)
     return Qnil;
-  return rb_str_new(parser->doc.data, parser->doc.length);
+  enc = rb_enc_from_index(parser->doc.enc_index);
+  return rb_enc_str_new(parser->doc.data, parser->doc.length, enc);
 }
 
 static VALUE parser_document_length_method(VALUE self)
 {
   struct parser_t *parser = NULL;
+  rb_encoding *enc;
+  const char *buf;
+
   Parser_Get_Struct(self, parser);
-  return ULONG2NUM(parser->doc.length);
+
+  if(parser->doc.data == NULL) {
+    return ULONG2NUM(0);
+  }
+  else {
+    buf = parser->doc.data;
+    enc = rb_enc_from_index(parser->doc.enc_index);
+    return ULONG2NUM(rb_enc_strlen(buf, buf + parser->doc.length, enc));
+  }
 }
 
 static VALUE parser_context_method(VALUE self)
@@ -588,9 +633,10 @@ static VALUE parser_context_method(VALUE self)
 
 static inline VALUE ref_to_str(struct parser_t *parser, struct token_reference_t *ref)
 {
+  rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
   if(ref->type == TOKEN_NONE || parser->doc.data == NULL)
     return Qnil;
-  return rb_str_new(parser->doc.data+ref->start, ref->length);
+  return rb_enc_str_new(parser->doc.data+ref->start, ref->length, enc);
 }
 
 static VALUE parser_tag_name_method(VALUE self)
@@ -665,29 +711,6 @@ static VALUE parser_rawtext_text_method(VALUE self)
   return ref_to_str(parser, &parser->rawtext.text);
 }
 
-static VALUE parser_extract_method(VALUE self, VALUE start_p, VALUE end_p)
-{
-  struct parser_t *parser = NULL;
-  unsigned long int start, end;
-  struct token_reference_t ref;
-
-  Parser_Get_Struct(self, parser);
-
-  start = NUM2ULONG(start_p);
-  end = NUM2ULONG(end_p);
-  if(end < start) {
-    rb_raise(rb_eArgError, "'end' must be greater or equal than 'start'");
-  }
-  if(end > parser->doc.length) {
-    rb_raise(rb_eArgError, "'end' argument not in range of document");
-  }
-
-  ref.type = TOKEN_TEXT; // anything not NONE
-  ref.start = start;
-  ref.length = end - start;
-  return ref_to_str(parser, &ref);
-}
-
 static VALUE parser_errors_count_method(VALUE self)
 {
   struct parser_t *parser = NULL;
@@ -749,7 +772,6 @@ void Init_html_tokenizer_parser(VALUE mHtmlTokenizer)
   rb_define_method(cParser, "column_number", parser_column_number_method, 0);
   rb_define_method(cParser, "parse", parser_parse_method, 1);
   rb_define_method(cParser, "append_placeholder", parser_append_placeholder_method, 1);
-  rb_define_method(cParser, "extract", parser_extract_method, 2);
   rb_define_method(cParser, "context", parser_context_method, 0);
   rb_define_method(cParser, "tag_name", parser_tag_name_method, 0);
   rb_define_method(cParser, "closing_tag?", parser_closing_tag_method, 0);

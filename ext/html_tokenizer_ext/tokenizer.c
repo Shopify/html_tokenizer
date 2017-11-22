@@ -662,11 +662,28 @@ void tokenizer_scan_all(struct tokenizer_t *tk)
   return;
 }
 
+void tokenizer_set_scan_string(struct tokenizer_t *tk, const char *string, long unsigned int length)
+{
+  const char *old = tk->scan.string;
+  REALLOC_N(tk->scan.string, char, string ? length + 1 : 0);
+  DBG_PRINT("tk=%p realloc(tk->scan.string) %p -> %p length=%lu", tk, old,
+    tk->scan.string, length + 1);
+  if(string && length > 0)
+    strncpy(tk->scan.string, string, length);
+  tk->scan.length = length;
+  return;
+}
+
+void tokenizer_free_scan_string(struct tokenizer_t *tk)
+{
+  tokenizer_set_scan_string(tk, NULL, 0);
+  return;
+}
+
 static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
 {
   struct tokenizer_t *tk = NULL;
   char *c_source;
-  char *old;
 
   if(NIL_P(source))
     return Qnil;
@@ -676,21 +693,13 @@ static VALUE tokenizer_tokenize_method(VALUE self, VALUE source)
 
   c_source = StringValueCStr(source);
   tk->scan.cursor = 0;
-  tk->scan.length = strlen(c_source);
+  tokenizer_set_scan_string(tk, c_source, strlen(c_source));
   tk->scan.enc_index = rb_enc_get_index(source);
   tk->scan.mb_cursor = 0;
 
-  old = tk->scan.string;
-  REALLOC_N(tk->scan.string, char, tk->scan.length+1);
-  DBG_PRINT("tk=%p realloc(tk->scan.string) %p -> %p length=%lu", tk, old,
-    tk->scan.string,  tk->scan.length+1);
-  strncpy(tk->scan.string, c_source, tk->scan.length);
-
   tokenizer_scan_all(tk);
 
-  DBG_PRINT("tk=%p xfree(tk->scan.string) 0x%p", tk, tk->scan.string);
-  xfree(tk->scan.string);
-  tk->scan.string = NULL;
+  tokenizer_free_scan_string(tk);
 
   return Qtrue;
 }

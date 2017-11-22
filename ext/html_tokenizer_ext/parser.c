@@ -508,6 +508,15 @@ static int parser_document_append(struct parser_t *parser, const char *string, u
   return 1;
 }
 
+static inline void parser_free_scan_string(struct parser_t *parser)
+{
+  if(parser->tk.scan.string) {
+    xfree(parser->tk.scan.string);
+    parser->tk.scan.string = NULL;
+  }
+  return;
+}
+
 static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
 {
   struct parser_t *parser = NULL;
@@ -543,6 +552,7 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
     parser_adjust_line_number(parser, cursor, length);
   }
   else {
+    parser_free_scan_string(parser);
     parser->tk.scan.cursor = cursor;
     parser->tk.scan.string = strdup(parser->doc.data);
     parser->tk.scan.length = parser->doc.length;
@@ -551,10 +561,7 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
 
     tokenizer_scan_all(&parser->tk);
 
-    if(parser->tk.scan.string) {
-      xfree(parser->tk.scan.string);
-      parser->tk.scan.string = NULL;
-    }
+    parser_free_scan_string(parser);
   }
 
   return Qtrue;

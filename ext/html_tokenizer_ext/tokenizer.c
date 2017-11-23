@@ -668,8 +668,10 @@ void tokenizer_set_scan_string(struct tokenizer_t *tk, const char *string, long 
   REALLOC_N(tk->scan.string, char, string ? length + 1 : 0);
   DBG_PRINT("tk=%p realloc(tk->scan.string) %p -> %p length=%lu", tk, old,
     tk->scan.string, length + 1);
-  if(string && length > 0)
+  if(string && length > 0) {
     strncpy(tk->scan.string, string, length);
+    tk->scan.string[length] = 0;
+  }
   tk->scan.length = length;
   return;
 }

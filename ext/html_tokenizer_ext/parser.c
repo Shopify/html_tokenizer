@@ -544,14 +544,12 @@ static VALUE parser_append_data(VALUE self, VALUE source, int is_placeholder)
   }
   else {
     parser->tk.scan.cursor = cursor;
-    parser->tk.scan.string = parser->doc.data;
-    parser->tk.scan.length = parser->doc.length;
+    tokenizer_set_scan_string(&parser->tk, parser->doc.data, parser->doc.length);
     parser->tk.scan.enc_index = parser->doc.enc_index;
     parser->tk.scan.mb_cursor = mb_cursor;
 
     tokenizer_scan_all(&parser->tk);
-
-    parser->tk.scan.string = NULL;
+    tokenizer_free_scan_string(&parser->tk);
   }
 
   return Qtrue;

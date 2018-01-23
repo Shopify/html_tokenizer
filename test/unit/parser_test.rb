@@ -437,6 +437,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<>')
     assert_equal 1, @parser.errors_count
     assert_equal "expected '/' or tag name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 1, @parser.errors.first.column
   end
@@ -445,6 +446,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('< ')
     assert_equal 1, @parser.errors_count
     assert_equal "expected '/' or tag name", @parser.errors.first.to_s
+    assert_equal 1, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 1, @parser.errors.first.column
   end
@@ -453,6 +455,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<foo =')
     assert_equal 1, @parser.errors_count
     assert_equal "expected whitespace, '>', attribute name or value", @parser.errors.first.to_s
+    assert_equal 5, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 5, @parser.errors.first.column
   end
@@ -461,6 +464,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<foo /x')
     assert_equal 1, @parser.errors_count
     assert_equal "expected '>' after '/'", @parser.errors.first.to_s
+    assert_equal 6, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 6, @parser.errors.first.column
   end
@@ -469,6 +473,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<foo / ')
     assert_equal 1, @parser.errors_count
     assert_equal "expected '>' after '/'", @parser.errors.first.to_s
+    assert_equal 6, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 6, @parser.errors.first.column
   end
@@ -476,29 +481,33 @@ class HtmlTokenizer::ParserTest < Minitest::Test
   def test_attribute_name_error
     parse('<foo bar~')
     assert_equal 2, @parser.errors_count
-    assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors.first.to_s
-    assert_equal 1, @parser.errors.first.line
-    assert_equal 8, @parser.errors.first.column
     assert_equal "expected whitespace, '>' or '=' after attribute name", @parser.errors[0].to_s
+    assert_equal 8, @parser.errors.first.position
     assert_equal 1, @parser.errors[0].line
     assert_equal 8, @parser.errors[0].column
+    assert_equal "expected whitespace, '>', attribute name or value", @parser.errors[1].to_s
+    assert_equal 8, @parser.errors.first.position
+    assert_equal 1, @parser.errors[1].line
+    assert_equal 8, @parser.errors[1].column
   end
 
   def test_attribute_whitespace_or_equal_error
     parse('<foo bar ~')
     assert_equal 2, @parser.errors_count
-    assert_equal "expected '/', '>', \", ' or '=' after attribute name", @parser.errors.first.to_s
-    assert_equal 1, @parser.errors.first.line
-    assert_equal 9, @parser.errors.first.column
     assert_equal "expected '/', '>', \", ' or '=' after attribute name", @parser.errors[0].to_s
     assert_equal 1, @parser.errors[0].line
     assert_equal 9, @parser.errors[0].column
+    assert_equal "expected whitespace, '>', attribute name or value", @parser.errors[1].to_s
+    assert_equal 9, @parser.errors.first.position
+    assert_equal 1, @parser.errors[1].line
+    assert_equal 9, @parser.errors[1].column
   end
 
   def test_attribute_whitespace_or_equal_error_2
     parse('<foo bar = >')
     assert_equal 1, @parser.errors_count
     assert_equal "expected attribute value after '='", @parser.errors.first.to_s
+    assert_equal 11, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 11, @parser.errors.first.column
   end
@@ -507,6 +516,7 @@ class HtmlTokenizer::ParserTest < Minitest::Test
     parse('<foo bar=""x')
     assert_equal 1, @parser.errors_count
     assert_equal "expected space after attribute value", @parser.errors.first.to_s
+    assert_equal 11, @parser.errors.first.position
     assert_equal 1, @parser.errors.first.line
     assert_equal 11, @parser.errors.first.column
   end

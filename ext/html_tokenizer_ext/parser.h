@@ -19,6 +19,8 @@ enum parser_context {
 
 struct parser_document_error_t {
   char *message;
+  long unsigned int pos;
+  long unsigned int mb_pos;
   long unsigned int line_number;
   long unsigned int column_number;
 };

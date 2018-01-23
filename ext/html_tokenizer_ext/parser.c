@@ -82,6 +82,8 @@ static void parser_add_error(struct parser_t *parser, const char *message)
 {
   REALLOC_N(parser->errors, struct parser_document_error_t, parser->errors_count + 1);
   parser->errors[parser->errors_count].message = strdup(message);
+  parser->errors[parser->errors_count].pos = parser->tk.scan.cursor;
+  parser->errors[parser->errors_count].mb_pos = parser->tk.scan.mb_cursor;
   parser->errors[parser->errors_count].line_number = parser->doc.line_number;
   parser->errors[parser->errors_count].column_number = parser->doc.column_number;
   parser->errors_count += 1;
@@ -723,12 +725,13 @@ static VALUE create_parser_error(struct parser_document_error_t *error)
 {
   VALUE module = rb_const_get(rb_cObject, rb_intern("HtmlTokenizer"));
   VALUE klass = rb_const_get(module, rb_intern("ParserError"));
-  VALUE args[3] = {
+  VALUE args[4] = {
     rb_str_new2(error->message),
+    ULONG2NUM(error->mb_pos),
     ULONG2NUM(error->line_number),
     ULONG2NUM(error->column_number),
   };
-  return rb_class_new_instance(3, args, klass);
+  return rb_class_new_instance(4, args, klass);
 }
 
 static VALUE parser_errors_method(VALUE self, VALUE error_p)

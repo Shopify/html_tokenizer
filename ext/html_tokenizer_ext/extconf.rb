@@ -1,8 +1,8 @@
 require 'mkmf'
 
 $CXXFLAGS += " -std=c++11 "
-$CXXFLAGS += " -g -Og -ggdb "
-$CFLAGS += " -g -Og -ggdb "
+$CXXFLAGS += " -g -O1 -ggdb "
+$CFLAGS += " -g -O1 -ggdb "
 
 if ENV['DEBUG']
   $CXXFLAGS += "  -DDEBUG "

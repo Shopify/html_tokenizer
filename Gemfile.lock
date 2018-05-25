@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html_tokenizer (0.0.6)
+    html_tokenizer (0.0.7)
 
 GEM
   remote: https://rubygems.org/
@@ -21,4 +21,4 @@ DEPENDENCIES
   rake-compiler
 
 BUNDLED WITH
-   1.16.0
+   1.16.1

@@ -135,7 +135,7 @@ static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, lo
 {
   long unsigned int mb_length = tokenizer_mblength(tk, length);
   tk->last_token = type;
-  rb_yield_values(3, token_type_to_symbol(type), INT2NUM(tk->scan.mb_cursor), INT2NUM(tk->scan.mb_cursor + mb_length));
+  rb_yield_values(3, token_type_to_symbol(type), ULL2NUM(tk->scan.mb_cursor), ULL2NUM(tk->scan.mb_cursor + mb_length));
 }
 
 static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, long unsigned int length)
@@ -464,11 +464,9 @@ static int scan_tag_name(struct tokenizer_t *tk)
 {
   unsigned long int length = 0, tag_name_length = 0;
   const char *tag_name = NULL;
-  void *old;
 
   if(is_tag_name(&tk->scan, &tag_name, &tag_name_length)) {
     length = (tk->current_tag ? strlen(tk->current_tag) : 0);
-    old = tk->current_tag;
     REALLOC_N(tk->current_tag, char, length + tag_name_length + 1);
     DBG_PRINT("tk=%p realloc(tk->current_tag) %p -> %p length=%lu", tk, old,
       tk->current_tag,  length + tag_name_length + 1);
@@ -664,7 +662,6 @@ void tokenizer_scan_all(struct tokenizer_t *tk)
 
 void tokenizer_set_scan_string(struct tokenizer_t *tk, const char *string, long unsigned int length)
 {
-  const char *old = tk->scan.string;
   REALLOC_N(tk->scan.string, char, string ? length + 1 : 0);
   DBG_PRINT("tk=%p realloc(tk->scan.string) %p -> %p length=%lu", tk, old,
     tk->scan.string, length + 1);

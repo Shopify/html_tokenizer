@@ -455,8 +455,8 @@ static void parser_tokenize_callback(struct tokenizer_t *tk, enum token_type typ
     enc = rb_enc_from_index(parser->doc.enc_index);
     mb_strlen = rb_enc_strlen(parser->doc.data + ref.start, parser->doc.data + ref.start + ref.length, enc);
     rb_yield_values(5, token_type_to_symbol(type),
-      INT2NUM(ref.mb_start), INT2NUM(ref.mb_start + mb_strlen),
-      INT2NUM(ref.line_number), INT2NUM(ref.column_number));
+      ULONG2NUM(ref.mb_start), ULONG2NUM(ref.mb_start + mb_strlen),
+      ULONG2NUM(ref.line_number), ULONG2NUM(ref.column_number));
   }
 
   parser_adjust_line_number(parser, ref.start, ref.length);
@@ -495,7 +495,10 @@ static VALUE parser_initialize_method(VALUE self)
 
 static int parser_document_append(struct parser_t *parser, const char *string, unsigned long int length)
 {
+#ifdef DEBUG
   void *old = parser->doc.data;
+#endif
+
   unsigned long int mb_length;
   char *buf;
   rb_encoding *enc = rb_enc_from_index(parser->doc.enc_index);
@@ -718,7 +721,7 @@ static VALUE parser_errors_count_method(VALUE self)
 {
   struct parser_t *parser = NULL;
   Parser_Get_Struct(self, parser);
-  return INT2NUM(parser->errors_count);
+  return ULONG2NUM(parser->errors_count);
 }
 
 static VALUE create_parser_error(struct parser_document_error_t *error)

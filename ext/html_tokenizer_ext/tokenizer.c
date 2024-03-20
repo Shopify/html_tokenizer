@@ -135,7 +135,7 @@ static void tokenizer_yield_tag(struct tokenizer_t *tk, enum token_type type, lo
 {
   long unsigned int mb_length = tokenizer_mblength(tk, length);
   tk->last_token = type;
-  rb_yield_values(3, token_type_to_symbol(type), ULL2NUM(tk->scan.mb_cursor), ULL2NUM(tk->scan.mb_cursor + mb_length));
+  rb_yield_values(3, token_type_to_symbol(type), ULONG2NUM(tk->scan.mb_cursor), ULONG2NUM(tk->scan.mb_cursor + mb_length));
 }
 
 static void tokenizer_callback(struct tokenizer_t *tk, enum token_type type, long unsigned int length)

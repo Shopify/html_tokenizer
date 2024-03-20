@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'html_tokenizer_ext'
 
 module HtmlTokenizer

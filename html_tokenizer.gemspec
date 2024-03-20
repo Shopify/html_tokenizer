@@ -4,6 +4,14 @@ Gem::Specification.new do |spec|
   spec.summary = "HTML Tokenizer"
   spec.author  = "Francois Chagnon"
 
+  spec.homepage      = "https://github.com/Shopify/html_tokenizer"
+  spec.license       = "MIT"
+
+  spec.metadata["allowed_push_host"] = "https://rubygems.org/"
+
+  spec.metadata["homepage_uri"] = spec.homepage
+  spec.metadata["source_code_uri"] = spec.homepage
+
   spec.files = Dir.glob("ext/**/*.{c,h,rb}") +
             Dir.glob("lib/**/*.rb")
 

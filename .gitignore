@@ -1,5 +1,7 @@
+Gemfile.lock
 *.bundle
 tmp/
+
 
 # Object files
 *.o
